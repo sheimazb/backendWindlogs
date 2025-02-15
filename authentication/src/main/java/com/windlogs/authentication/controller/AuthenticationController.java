@@ -23,6 +23,17 @@ public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
 
+    /**
+     * This is the controller for the Partner role to register
+     * in our application.
+
+     * It includes the `register` function to create a new account,
+     * and the `activateAccount` function for partner account validation.
+
+     * After validation and email verification, the partner's account
+     * is successfully created, granting them permission to authenticate.
+     */
+
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody @Valid RegistrationRequest request) {
         try {

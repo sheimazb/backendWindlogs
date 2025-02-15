@@ -13,7 +13,9 @@ import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static jakarta.persistence.FetchType.EAGER;
 
@@ -80,7 +82,12 @@ public class User implements UserDetails, Principal {
      */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        Set<SimpleGrantedAuthority> authorities = new HashSet<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        role.getAuthorities().forEach(authority -> 
+            authorities.add(new SimpleGrantedAuthority(authority.name()))
+        );
+        return authorities;
     }
 
     @Override

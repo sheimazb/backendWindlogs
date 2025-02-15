@@ -1,11 +1,9 @@
 package com.windlogs.authentication.controller;
 
 import com.windlogs.authentication.dto.AuthenticationRequest;
-import com.windlogs.authentication.dto.AuthenticationResponse;
 import com.windlogs.authentication.dto.EmployeeAuthResponse;
 import com.windlogs.authentication.dto.EmployeeCreationRequest;
 import com.windlogs.authentication.entity.User;
-import com.windlogs.authentication.service.AuthenticationService;
 import com.windlogs.authentication.service.EmployeeAuthenticationService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.mail.MessagingException;
@@ -23,24 +21,20 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/v1/employees")
 @Tag(name = "Employee Management")
 @RequiredArgsConstructor
-public class EmployeeController {
-    private static final Logger logger = LoggerFactory.getLogger(EmployeeController.class);
+public class PartnerController {
+    private static final Logger logger = LoggerFactory.getLogger(PartnerController.class);
 
-    private final AuthenticationService authenticationService;
     private final EmployeeAuthenticationService employeeAuthenticationService;
 
-    @PostMapping
-    @PreAuthorize("hasRole('PARTNER')")
+    @PostMapping("/create-staff")
+    @PreAuthorize("hasAuthority('CREATE_STAFF')")
     public ResponseEntity<?> createEmployee(
             @RequestBody @Valid EmployeeCreationRequest request,
             Authentication authentication) {
         try {
             logger.info("Received employee creation request for email: {}", request.getEmail());
-
-            // Correctly cast the authentication.getPrincipal() to User
             User partner = (User) authentication.getPrincipal();
-
-            authenticationService.createEmployee(request, partner);
+            employeeAuthenticationService.createEmployee(request, partner);
             return ResponseEntity.ok("Employee account created successfully! Credentials have been sent via email.");
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode())
@@ -59,7 +53,7 @@ public class EmployeeController {
     @PostMapping("/authenticate")
     public ResponseEntity<EmployeeAuthResponse> authenticate(
             @RequestBody @Valid AuthenticationRequest request) {
-        return ResponseEntity.ok(employeeAuthenticationService.userAuth(request)); 
+        return ResponseEntity.ok(employeeAuthenticationService.userAuth(request));
     }
 
 }
