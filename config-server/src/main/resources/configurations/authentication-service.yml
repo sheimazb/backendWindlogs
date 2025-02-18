@@ -1,0 +1,44 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/auth
+    username: postgres
+    password: ${DB_PASSWORD:0000}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database: POSTGRESQL
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:zbedichaima@gmail.com}
+    password: ${MAIL_PASSWORD:pfnb vcvb sagg bgjj}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          ssl:
+            trust: smtp.gmail.com
+        transport:
+          protocol: smtp
+        debug: true
+application:
+  security:
+    jwt:
+      secret-key: 1689f02c98b9958b8092162aa4480adc00716502946f6206f7179f1e6860cde7
+      expiration: 8640000
+  mailing:
+    frontend:
+      activation-url: http://localhost:3000/activate-account
+server:
+  port: 8088
+  config:
+    import: optional:application-secrets.yml

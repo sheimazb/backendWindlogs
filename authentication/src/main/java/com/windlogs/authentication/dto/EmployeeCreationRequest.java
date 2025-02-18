@@ -1,6 +1,7 @@
 package com.windlogs.authentication.dto;
 
 import com.windlogs.authentication.entity.Role;
+import jakarta.persistence.Column;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

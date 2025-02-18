@@ -64,6 +64,10 @@ public class User implements UserDetails, Principal {
     @Column(insertable = false)
     private LocalDateTime lastModifiedDate;
 
+    @Column(nullable = false)
+    private String tenant;
+
+
     @PrePersist
     protected void onCreate() {
         createdDate = LocalDateTime.now();

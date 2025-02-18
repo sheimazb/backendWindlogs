@@ -32,6 +32,7 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -78,6 +79,7 @@ public class AuthenticationService {
                     .accountLocked(false)
                     .enabled(false)
                     .role(Role.PARTNER) // ou un autre rôle par défaut
+                    .tenant(UUID.randomUUID().toString())
                     .build();
 
             logger.info("Saving new user: {}", user.getEmail());

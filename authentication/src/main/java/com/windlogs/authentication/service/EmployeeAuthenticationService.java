@@ -73,7 +73,7 @@ public class EmployeeAuthenticationService {
 
             // Add role-specific claims to JWT
             var claims = new HashMap<String, Object>();
-            claims.put("fullName", user.getFullName());
+            claims.put("fullName", user.fullName());
             claims.put("role", user.getRole().name());
 
             // For employees, add additional claims if needed
@@ -134,6 +134,7 @@ public class EmployeeAuthenticationService {
         String randomPassword = generateRandomPassword();
 
         try {
+            // Create the employee with the partner's tenant
             var user = User.builder()
                     .firstname(request.getFirstname())
                     .lastname(request.getLastname())
@@ -142,6 +143,7 @@ public class EmployeeAuthenticationService {
                     .accountLocked(false)
                     .enabled(true)  // Employee accounts are enabled by default
                     .role(request.getRole())
+                    .tenant(partner.getTenant()) // Use partner's tenant
                     .build();
 
             logger.info("Saving new employee: {}", user.getEmail());
@@ -149,7 +151,9 @@ public class EmployeeAuthenticationService {
 
             // Generate JWT token for the new employee
             var claims = new HashMap<String, Object>();
-            claims.put("fullName", user.getFullName());
+            claims.put("fullName", user.fullName());
+            claims.put("role", user.getRole().name());
+            claims.put("tenant", user.getTenant()); // Include tenant in claims
             String token = jwtService.generateToken(claims, user);
 
             // Send credentials via email
