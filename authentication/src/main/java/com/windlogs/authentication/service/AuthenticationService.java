@@ -1,9 +1,6 @@
 package com.windlogs.authentication.service;
 
-import com.windlogs.authentication.dto.AuthenticationRequest;
-import com.windlogs.authentication.dto.AuthenticationResponse;
-import com.windlogs.authentication.dto.EmployeeCreationRequest;
-import com.windlogs.authentication.dto.RegistrationRequest;
+import com.windlogs.authentication.dto.*;
 import com.windlogs.authentication.email.EmailService;
 import com.windlogs.authentication.email.EmailTemplateName;
 import com.windlogs.authentication.entity.Role;
@@ -22,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -136,18 +134,65 @@ public class AuthenticationService {
 
 
     public AuthenticationResponse authenticate(@Valid AuthenticationRequest request) {
-        var auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
-        );
-        var claims = new HashMap<String, Object>();
-        var user = ((User) auth.getPrincipal());
-        claims.put("fullName", user.getFullName());
-        var jwtToken = jwtService.generateToken(claims, user);
-        return AuthenticationResponse.builder()
-                .token(jwtToken).build();
+        logger.info("Authentication attempt for user: {}", request.getEmail());
+
+        try {
+            // First attempt authentication
+            var auth = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getPassword()
+                    )
+            );
+
+            var user = (User) auth.getPrincipal();
+
+            // Check if account is enabled
+            if (!user.isEnabled()) {
+                logger.warn("Login attempt for disabled account: {}", request.getEmail());
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Account not activated. Please check your email for activation instructions."
+                );
+            }
+
+            // Check if account is locked
+            if (user.isAccountLocked()) {
+                logger.warn("Login attempt for locked account: {}", request.getEmail());
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Account is locked. Please contact your administrator."
+                );
+            }
+
+            // Add role-specific claims to JWT
+            var claims = new HashMap<String, Object>();
+            claims.put("fullName", user.fullName());
+            claims.put("role", user.getRole().name());
+
+            // For employees, add additional claims if needed
+            if (user.getRole() == Role.DEVELOPER || user.getRole() == Role.TESTER) {
+                claims.put("employeeType", user.getRole().name().toLowerCase());
+            }
+
+            var jwtToken = jwtService.generateToken(claims, user);
+
+            logger.info("Successfully authenticated user: {}", request.getEmail());
+
+            return AuthenticationResponse.builder()
+                    .token(jwtToken)
+                    .email(user.getEmail())
+                    .fullName(user.getFullName())
+                    .role(user.getRole().name())
+                    .build();
+
+        } catch (BadCredentialsException e) {
+            logger.warn("Failed login attempt for user: {}", request.getEmail());
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Invalid email or password"
+            );
+        }
     }
 
     @Transactional

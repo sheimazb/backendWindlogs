@@ -50,10 +50,6 @@ public class PartnerController {
         }
     }
 
-    @PostMapping("/authenticate")
-    public ResponseEntity<EmployeeAuthResponse> authenticate(
-            @RequestBody @Valid AuthenticationRequest request) {
-        return ResponseEntity.ok(employeeAuthenticationService.userAuth(request));
-    }
+
 
 }
