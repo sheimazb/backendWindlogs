@@ -32,40 +32,40 @@ public class jwtFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-         // 1. Vérifie si c'est une URL publique
-        if(request.getServletPath().contains("/api/v1/auth")){
+        // Skip JWT check for OPTIONS requests and public endpoints
+        if (request.getMethod().equals("OPTIONS") || 
+            request.getServletPath().contains("/api/v1/auth")) {
             filterChain.doFilter(request, response);
-            return; // Pas besoin d'authentification
+            return;
         }
-        //  Vérifie si l'en-tête d'autorisation est présent
-        // 2. Vérifie le token JWT
+
         final String authHeader = request.getHeader(AUTHORIZATION);
         final String jwt;
         final String userEmail;
+
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
-            return; // Pas de token = pas d'accès
+            return;
         }
-        // 3. Valide le token et authentifie l'utilisateur
+
         jwt = authHeader.substring(7);
         userEmail = jwtService.extractUsername(jwt);
-        //here we want to extract the user email from the token which the methode is called extractUsername
-        if(userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null){
+
+        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
-            if(jwtService.isTokenValid(jwt, userDetails)){
-               UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                userDetails,
-                       null,
-                       userDetails.getAuthorities()
-               );
-                //build and extract some information that we can provide to our token (about the attributes of setDetails)
-               authToken.setDetails(
-                       new WebAuthenticationDetailsSource().buildDetails(request  )
-               );
-               SecurityContextHolder.getContext().setAuthentication(authToken);
+            if (jwtService.isTokenValid(jwt, userDetails)) {
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
+                );
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
+                SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
-        filterChain.doFilter(request,response);
+        filterChain.doFilter(request, response);
     }
 
     @Override
