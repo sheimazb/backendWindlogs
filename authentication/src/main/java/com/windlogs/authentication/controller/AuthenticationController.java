@@ -1,9 +1,7 @@
 package com.windlogs.authentication.controller;
 
-import com.windlogs.authentication.dto.AuthenticationRequest;
-import com.windlogs.authentication.dto.AuthenticationResponse;
+import com.windlogs.authentication.dto.*;
 import com.windlogs.authentication.service.AuthenticationService;
-import com.windlogs.authentication.dto.RegistrationRequest;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.mail.MessagingException;
 import jakarta.validation.Valid;
@@ -14,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import java.security.SecureRandom;
-import com.windlogs.authentication.dto.ChangePasswordRequest;
+
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -106,16 +104,15 @@ public class AuthenticationController {
         }
     }
 
-    @PostMapping("/change-password")
-    public ResponseEntity<String> changePassword(@RequestBody @Valid ChangePasswordRequest request, @AuthenticationPrincipal UserDetails userDetails) {
-        if (userDetails == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not authenticated.");
-        }
-        // Retrieve the user from the database using userDetails
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    @PostMapping("/request-password-change")
+    public ResponseEntity<String> requestPasswordChange(@RequestBody @Valid ChangePasswordRequest request) throws MessagingException {
+        authenticationService.requestPasswordChange(request);
+        return ResponseEntity.ok("Verification code sent to your email!");
+    }
 
-        authenticationService.changePassword(request.getCurrentPassword(), request.getNewPassword(), user);
+    @PostMapping("/verify-and-change-password")
+    public ResponseEntity<String> verifyAndChangePassword(@RequestBody @Valid VerifyChangePasswordRequest request) {
+        authenticationService.verifyAndChangePassword(request);
         return ResponseEntity.ok("Password changed successfully!");
     }
 }

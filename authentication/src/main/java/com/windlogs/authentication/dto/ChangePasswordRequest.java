@@ -1,29 +1,41 @@
 package com.windlogs.authentication.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 public class ChangePasswordRequest {
-    @NotBlank(message = "Current password is required")
-    private String currentPassword;
+    @Email
+    private String email;
 
-    @NotBlank(message = "New password is required")
+    public @NotBlank String getCurrentPassword() {
+        return currentPassword;
+    }
+
+    public void setCurrentPassword(@NotBlank String currentPassword) {
+        this.currentPassword = currentPassword;
+    }
+
+    @NotBlank
+    private String currentPassword; // Add this field
+
+    @NotBlank
     private String newPassword;
 
     public ChangePasswordRequest() {}
 
-    public String getCurrentPassword() {
-        return currentPassword;
+    public @Email String getEmail() {
+        return email;
     }
 
-    public void setCurrentPassword(String currentPassword) {
-        this.currentPassword = currentPassword;
+    public void setEmail(@Email String email) {
+        this.email = email;
     }
 
-    public String getNewPassword() {
+    public @NotBlank String getNewPassword() {
         return newPassword;
     }
 
-    public void setNewPassword(String newPassword) {
+    public void setNewPassword(@NotBlank String newPassword) {
         this.newPassword = newPassword;
     }
-} 
+}

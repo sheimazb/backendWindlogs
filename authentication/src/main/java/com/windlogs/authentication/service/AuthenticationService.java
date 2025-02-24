@@ -239,21 +239,41 @@ public class AuthenticationService {
         userRepository.save(user);
     }
 
-    public void changePassword(String currentPassword, String newPassword, User user) {
-        logger.info("Changing password for user: {}", user.getEmail());
+    public void requestPasswordChange(ChangePasswordRequest request) throws MessagingException {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        // Validate current password
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            logger.warn("Current password is incorrect for user: {}", user.getEmail());
+        // Verify the current password
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Current password is incorrect");
         }
 
-        // Hash the new password before saving
-        BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-        String encodedPassword = passwordEncoder.encode(newPassword);
-        user.setPassword(encodedPassword);
-
-        userRepository.save(user);
-        logger.info("Password changed successfully for user: {}", user.getEmail());
+        // Generate a token and send it
+        Token token = generateAndSaveActivationToken(user);
+        emailService.sendEmail(
+                user.getEmail(),
+                user.getFullName(),
+                EmailTemplateName.RESET_PASSWORD,
+                "http://your-frontend-url/reset-password?token=" + token.getToken(),
+                token.getToken(),
+                "Password Change Request"
+        );
     }
+    public void verifyAndChangePassword(VerifyChangePasswordRequest request) {
+        Token token = tokenRepository.findByToken(request.getToken())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid token"));
+
+        if (LocalDateTime.now().isAfter(token.getExpiresAt())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token has expired");
+        }
+
+        User user = token.getUser();
+        user.setPassword(passwordEncoder.encode(request.getNewPassword())); // Assuming you have a password encoder
+        userRepository.save(user);
+
+        // Optionally, invalidate the token after use
+        token.setRevoked(true);
+        tokenRepository.save(token);
+    }
+
 }
