@@ -12,6 +12,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+import static org.springframework.security.config.Customizer.withDefaults;
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
 @Configuration
@@ -23,14 +24,13 @@ public class SecurityConfig {
     private final jwtFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
     private final CorsConfigurationSource corsConfigurationSource;
-
     @Bean // spring boot when it sees that there are a beans it know that this class need to configure and put in the context
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception  {
         http
 
-                .cors(cors -> cors.configurationSource(corsConfigurationSource))
-                .csrf(AbstractHttpConfigurer::disable) // Désactive CSRF
-                    .authorizeHttpRequests(req -> req
+                .cors(cors -> cors.configurationSource(corsConfigurationSource)) // Explicitly setting CORS
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(req -> req
                         .requestMatchers("/api/v1/auth/register", 
                                        "/api/v1/auth/authenticate", 
                                        "/api/v1/auth/activate-account",
