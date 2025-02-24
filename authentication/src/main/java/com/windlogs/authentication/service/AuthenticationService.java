@@ -22,6 +22,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -29,7 +30,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -37,8 +37,6 @@ import java.util.UUID;
 public class AuthenticationService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthenticationService.class);
-
-
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final TokenRepository tokenRepository;
@@ -92,8 +90,6 @@ public class AuthenticationService {
             throw e;
         }
     }
-
-
     //sendValidationEmail
     private void sendValidationEmail(User user) throws MessagingException {
         Token token = generateAndSaveActivationToken(user);
@@ -132,7 +128,6 @@ public class AuthenticationService {
         return codeBuilder.toString();
     }
 
-
     public AuthenticationResponse authenticate(@Valid AuthenticationRequest request) {
         logger.info("Authentication attempt for user: {}", request.getEmail());
 
@@ -150,10 +145,7 @@ public class AuthenticationService {
             // Check if account is enabled
             if (!user.isEnabled()) {
                 logger.warn("Login attempt for disabled account: {}", request.getEmail());
-                throw new ResponseStatusException(
-                        HttpStatus.FORBIDDEN,
-                        "Account not activated. Please check your email for activation instructions."
-                );
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account not activated.");
             }
 
             // Check if account is locked
@@ -169,7 +161,7 @@ public class AuthenticationService {
             var claims = new HashMap<String, Object>();
             claims.put("fullName", user.fullName());
             claims.put("role", user.getRole().name());
-
+            
             // For employees, add additional claims if needed
             if (user.getRole() == Role.DEVELOPER || user.getRole() == Role.TESTER) {
                 claims.put("employeeType", user.getRole().name().toLowerCase());
@@ -214,5 +206,54 @@ public class AuthenticationService {
         tokenRepository.save(savedToken);
     }
 
+    //forgot password features
+    public void updateResetPasswordToken(String token, String email) throws MessagingException {
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("Could not find any User with the email " + email));
+        
+        user.setResetPasswordToken(token);
+        userRepository.save(user);
+        
+        // Send password reset email
+        emailService.sendEmail(
+            user.getEmail(),
+            user.getFullName(),
+            EmailTemplateName.RESET_PASSWORD,
+            activationUrl + "/reset-password",
+            token,
+            "Reset Password Request"
+        );
+    }
 
+    public User getByResetPasswordToken(String token) {
+        return userRepository.findByResetPasswordToken(token)
+            .orElseThrow(() -> new RuntimeException("Invalid reset password token"));
+    }
+
+    public void updatePassword(User user, String newPassword) {
+        BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        user.setPassword(encodedPassword);
+
+        user.setResetPasswordToken(null);
+        userRepository.save(user);
+    }
+
+    public void changePassword(String currentPassword, String newPassword, User user) {
+        logger.info("Changing password for user: {}", user.getEmail());
+
+        // Validate current password
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            logger.warn("Current password is incorrect for user: {}", user.getEmail());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Current password is incorrect");
+        }
+
+        // Hash the new password before saving
+        BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        user.setPassword(encodedPassword);
+
+        userRepository.save(user);
+        logger.info("Password changed successfully for user: {}", user.getEmail());
+    }
 }
