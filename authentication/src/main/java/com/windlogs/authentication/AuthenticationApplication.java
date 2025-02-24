@@ -10,8 +10,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @SpringBootApplication
 @EnableJpaAuditing // if you don't add this one the @EntityListeners annotation at the user Entity will not be working
 @EnableAsync
-@EntityScan("com.windlogs.authentication.entity") // Spécifie où chercher les entités
-@EnableJpaRepositories("com.windlogs.authentication.repository")
+@EntityScan(basePackages = "com.windlogs.authentication.entity") // Spécifie où chercher les entités
+@EnableJpaRepositories(basePackages = "com.windlogs.authentication.repository")
 public class AuthenticationApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(AuthenticationApplication.class, args);

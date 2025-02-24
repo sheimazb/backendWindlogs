@@ -1,10 +1,9 @@
 package com.windlogs.authentication.controller;
 
-import com.windlogs.authentication.dto.AuthenticationRequest;
-import com.windlogs.authentication.dto.EmployeeAuthResponse;
 import com.windlogs.authentication.dto.EmployeeCreationRequest;
+import com.windlogs.authentication.dto.ProjectRequest;
 import com.windlogs.authentication.entity.User;
-import com.windlogs.authentication.service.EmployeeAuthenticationService;
+import com.windlogs.authentication.service.PartnerService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.mail.MessagingException;
 import jakarta.validation.Valid;
@@ -24,7 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class PartnerController {
     private static final Logger logger = LoggerFactory.getLogger(PartnerController.class);
 
-    private final EmployeeAuthenticationService employeeAuthenticationService;
+    private final PartnerService partnerService;
 
     @PostMapping("/create-staff")
     @PreAuthorize("hasAuthority('CREATE_STAFF')")
@@ -34,7 +33,7 @@ public class PartnerController {
         try {
             logger.info("Received employee creation request for email: {}", request.getEmail());
             User partner = (User) authentication.getPrincipal();
-            employeeAuthenticationService.createEmployee(request, partner);
+            partnerService.createEmployee(request, partner);
             return ResponseEntity.ok("Employee account created successfully! Credentials have been sent via email.");
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode())
@@ -50,6 +49,25 @@ public class PartnerController {
         }
     }
 
-
-
+    @PostMapping("/create-project")
+    @PreAuthorize("hasAuthority('CREATE_PROJECT')")
+    public ResponseEntity<?> createProject(
+            @RequestBody @Valid ProjectRequest request,
+            Authentication authentication
+    ) {
+        try {
+            logger.info("Received project creation request for project: {}", request.getName());
+            User partner = (User) authentication.getPrincipal();
+            partnerService.createProject(request, partner);
+            return ResponseEntity.ok("Project created successfully!");
+        } catch (ResponseStatusException e) {
+            logger.error("Error creating project: {}", e.getReason());
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(e.getReason());
+        } catch (Exception e) {
+            logger.error("Error creating project", e);
+            return ResponseEntity.internalServerError()
+                    .body("Failed to create project. Please try again.");
+        }
+    }
 }
