@@ -52,9 +52,9 @@ public class EmailService {
             helper.setText(htmlContent, true);
 
             mailSender.send(mimeMessage);
-            logger.info("✉️ Email sent successfully to: {}", to);
+            logger.info("Email sent successfully to: {}", to);
         } catch (MessagingException e) {
-            logger.error("❌ Failed to send email to: {} - Error: {}", to, e.getMessage());
+            logger.error(" Failed to send email to: {} - Error: {}", to, e.getMessage());
             throw e;
         }
     }

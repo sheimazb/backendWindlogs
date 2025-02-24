@@ -5,14 +5,29 @@ spring:
         locator:
           enabled: true
       routes:
-        - id: authentication-service
+        - id: authentication-service-auth
           uri: lb://AUTHENTICATION-SERVICE
           predicates:
             - Path=/api/v1/auth/**
-        - id: authentication-service
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RewritePath=/(?<segment>.*), /$\{segment}
+        - id: authentication-service-employees
           uri: lb://AUTHENTICATION-SERVICE
           predicates:
-              - Path=/api/v1/employees/**
+            - Path=/api/v1/employees/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RewritePath=/(?<segment>.*), /$\{segment}
+            - AddRequestHeader=X-Forwarded-Prefix, /api/v1/employees
+        - id: authentication-service-users
+          uri: lb://AUTHENTICATION-SERVICE
+          predicates:
+            - Path=/api/v1/users/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RewritePath=/(?<segment>.*), /$\{segment}
+            - AddRequestHeader=X-Forwarded-Prefix, /api/v1/users
       globalcors:
         corsConfigurations:
           '[/**]':
@@ -24,9 +39,18 @@ spring:
               - PUT
               - DELETE
               - OPTIONS
-            allowedHeaders: "*"
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+              - X-Requested-With
+              - Accept
+              - Origin
+              - Access-Control-Request-Method
+              - Access-Control-Request-Headers
             maxAge: 3600  # Cache preflight requests for 1 hour
             allowCredentials: true
+            exposedHeaders:
+              - Authorization
 server:
   port: 8222
 

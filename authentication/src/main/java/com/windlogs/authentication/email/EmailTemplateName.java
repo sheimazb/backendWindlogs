@@ -178,6 +178,61 @@ public enum EmailTemplateName {
                                    </div>
                                </body>
                                </html>
+        """),
+
+    RESET_PASSWORD("""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        max-width: 600px;
+                        margin: 0 auto;
+                        padding: 20px;
+                        background-color: #f5f5f5;
+                    }
+                    .card {
+                        background: white;
+                        border-radius: 8px;
+                        padding: 20px;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    }
+                    .code {
+                        font-size: 32px;
+                        font-weight: bold;
+                        color: #0066FF;
+                        text-align: center;
+                        margin: 20px 0;
+                        letter-spacing: 4px;
+                    }
+                    .warning {
+                        color: #ff3b30;
+                        font-size: 14px;
+                        text-align: center;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <h2>Password Reset Request</h2>
+                    <p>Hello %1$s,</p>
+                    <p>We received a request to reset your password. Here is your password reset code:</p>
+                    
+                    <div class="code">%3$s</div>
+                    
+                    <p>To reset your password, enter this code at %2$s</p>
+                    
+                    <p class="warning">This code will expire in 15 minutes.</p>
+                    
+                    <p>If you didn't request this password reset, please ignore this email or contact support if you have concerns.</p>
+                    
+                    <p>Best regards,<br>WindLogs Team</p>
+                </div>
+            </body>
+            </html>
         """);
 
     private final String template;

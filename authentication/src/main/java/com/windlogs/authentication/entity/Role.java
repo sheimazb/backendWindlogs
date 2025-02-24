@@ -8,10 +8,26 @@ import java.util.Set;
 @Getter
 @RequiredArgsConstructor
 public enum Role {
-    ADMIN(Set.of(Authority.CREATE_STAFF, Authority.REGISTER, Authority.AUTHENTICATE, Authority.ACTIVATE_ACCOUNT)),
-    PARTNER(Set.of(Authority.REGISTER, Authority.AUTHENTICATE, Authority.ACTIVATE_ACCOUNT,Authority.CREATE_STAFF)),
-    TESTER(Set.of(Authority.AUTHENTICATE)),
-    DEVELOPER(Set.of(Authority.AUTHENTICATE));
+    ADMIN(Set.of(
+            Authority.CREATE_STAFF,
+            Authority.CREATE_PROJECT,
+            Authority.REGISTER,
+            Authority.AUTHENTICATE,
+            Authority.ACTIVATE_ACCOUNT
+    )),
+    PARTNER(Set.of(
+            Authority.REGISTER,
+            Authority.AUTHENTICATE,
+            Authority.ACTIVATE_ACCOUNT,
+            Authority.CREATE_STAFF,
+            Authority.CREATE_PROJECT
+    )),
+    TESTER(Set.of(
+            Authority.AUTHENTICATE
+    )),
+    DEVELOPER(Set.of(
+            Authority.AUTHENTICATE
+    ));
 
     private final Set<Authority> authorities;
 }

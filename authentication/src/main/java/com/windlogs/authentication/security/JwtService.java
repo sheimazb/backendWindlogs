@@ -56,16 +56,18 @@ public class JwtService {
                 .stream()
                 .map(GrantedAuthority::getAuthority)
                 .toList();
+        
+        // Merge the authorities with existing claims
+        extraClaims.put("authorities", authorities);
+        
         return Jwts
                 .builder()
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
-                .claim("authorities",authorities)
                 .signWith(getSignInKey())
-                .compact()
-                ;
+                .compact();
     }
 
 

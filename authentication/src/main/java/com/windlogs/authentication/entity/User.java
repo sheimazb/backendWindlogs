@@ -11,13 +11,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
-import static jakarta.persistence.FetchType.EAGER;
+
 
 @Data
 @Builder
@@ -32,14 +30,47 @@ public class User implements UserDetails, Principal {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "_user_seq")
     @SequenceGenerator(name = "_user_seq")
     private Long id;
+
     private String firstname;
+
     private String lastname;
+
     @Column(unique = true)
     private String email;
+
     private String password;
+
     private boolean accountLocked;
+
     private boolean enabled;
-    
+
+    @Column(name = "reset_password_token")
+    private String resetPasswordToken;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role;
+
+    @Column(nullable = false)
+    private String tenant;
+
+    private String image; // Field for profile image
+/**
+    private String pronouns;
+    private String location;
+    private String bio;
+    private String company;
+    private String phone;
+    private String lien;
+
+ */
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdDate;
+
+    @LastModifiedDate
+    @Column(insertable = false)
+    private LocalDateTime lastModifiedDate;
     /**
      * here when we use a table instead of an enum
      *
@@ -52,20 +83,6 @@ public class User implements UserDetails, Principal {
     private List<Role> roles = new ArrayList<>();
 */
     //if we choose to use an enum
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Role role;
-
-    @CreatedDate
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdDate;
-
-    @LastModifiedDate
-    @Column(insertable = false)
-    private LocalDateTime lastModifiedDate;
-
-    @Column(nullable = false)
-    private String tenant;
 
 
     @PrePersist
@@ -87,7 +104,7 @@ public class User implements UserDetails, Principal {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         Set<SimpleGrantedAuthority> authorities = new HashSet<>();
-        authorities.add(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        // Add authorities directly from the role
         role.getAuthorities().forEach(authority -> 
             authorities.add(new SimpleGrantedAuthority(authority.name()))
         );

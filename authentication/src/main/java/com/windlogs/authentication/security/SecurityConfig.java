@@ -27,12 +27,21 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception  {
         http
                 .cors(withDefaults())
-                .csrf(AbstractHttpConfigurer::disable) // Désactive CSRF
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(req -> req
                         .requestMatchers("/api/v1/auth/register", 
                                        "/api/v1/auth/authenticate", 
-                                       "/api/v1/auth/activate-account").permitAll()
+                                       "/api/v1/auth/activate-account",
+                                       "/api/v1/auth/forgot_password",
+                                       "/api/v1/auth/reset_password").permitAll()
                         .requestMatchers("/api/v1/employees/create-staff").hasAuthority("CREATE_STAFF")
+                        .requestMatchers("/api/v1/employees/create-project").hasAuthority("CREATE_PROJECT")
+                        .requestMatchers(
+                                "/api/v1/auth/change-password",
+                                "/api/v1/users/update-profile/**"
+                        ).authenticated()
+
+
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(STATELESS)) //means that spring should not store the session stateù
