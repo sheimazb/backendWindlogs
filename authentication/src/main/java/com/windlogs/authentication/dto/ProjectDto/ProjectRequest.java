@@ -1,7 +1,5 @@
-package com.windlogs.authentication.dto;
+package com.windlogs.authentication.dto.ProjectDto;
 
-import com.windlogs.authentication.entity.Role;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;

@@ -1,4 +1,4 @@
-package com.windlogs.authentication.dto;
+package com.windlogs.authentication.dto.AuthDTO;
 
 import lombok.Builder;
 import lombok.Getter;

@@ -4,6 +4,7 @@ import lombok.Data;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 @Data
 @Builder
@@ -13,5 +14,11 @@ public class UpdateProfileRequest {
     private String firstname;
     private String lastname;
     private String email;
-    private String image;
+    private MultipartFile image;
+    private String bio;
+    private String phone;
+    private String location;
+    private String company;
+    private String pronouns;
+    private String lien;
 }

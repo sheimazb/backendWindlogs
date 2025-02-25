@@ -8,6 +8,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
@@ -40,13 +41,6 @@ public class User implements UserDetails, Principal {
 
     private String password;
 
-    private boolean accountLocked;
-
-    private boolean enabled;
-
-    @Column(name = "reset_password_token")
-    private String resetPasswordToken;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
@@ -55,15 +49,25 @@ public class User implements UserDetails, Principal {
     private String tenant;
 
     private String image; // Field for profile image
-/**
+
     private String pronouns;
+
     private String location;
+
     private String bio;
+
     private String company;
+
     private String phone;
+
     private String lien;
 
- */
+    @Column(name = "reset_password_token")
+    private String resetPasswordToken;
+
+    private boolean accountLocked;
+
+    private boolean enabled;
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdDate;

@@ -4,6 +4,8 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,6 +19,7 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
+    private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
     @Value("${application.security.jwt.expiration}")
     private long jwtExpiration;
     @Value("${application.security.jwt.secret-key}")
@@ -73,7 +76,10 @@ public class JwtService {
 
     public boolean isTokenValid(String token, UserDetails userDetails){
         final String username = extractUsername(token);
-        return (username.equals(userDetails.getUsername()))&& !isTokenExpired(token);
+        logger.debug("Validating token for user: {}", username);
+        boolean isValid = (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+        logger.debug("Is token valid: {}", isValid);
+        return isValid;
     }
     private boolean isTokenExpired(String token){
         return extractExpiration(token).before(new Date());

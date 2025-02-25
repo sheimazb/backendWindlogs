@@ -1,6 +1,6 @@
 package com.windlogs.authentication.service;
 
-import com.windlogs.authentication.dto.*;
+import com.windlogs.authentication.dto.AuthDTO.*;
 import com.windlogs.authentication.email.EmailService;
 import com.windlogs.authentication.email.EmailTemplateName;
 import com.windlogs.authentication.entity.Role;

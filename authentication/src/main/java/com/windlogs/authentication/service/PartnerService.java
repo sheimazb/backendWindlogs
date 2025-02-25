@@ -2,7 +2,7 @@ package com.windlogs.authentication.service;
 
 
 import com.windlogs.authentication.dto.EmployeeCreationRequest;
-import com.windlogs.authentication.dto.ProjectRequest;
+import com.windlogs.authentication.dto.ProjectDto.ProjectRequest;
 import com.windlogs.authentication.email.EmailService;
 import com.windlogs.authentication.entity.Project;
 import com.windlogs.authentication.entity.Role;

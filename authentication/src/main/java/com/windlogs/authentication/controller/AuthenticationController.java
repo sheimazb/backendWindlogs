@@ -1,6 +1,6 @@
 package com.windlogs.authentication.controller;
 
-import com.windlogs.authentication.dto.*;
+import com.windlogs.authentication.dto.AuthDTO.*;
 import com.windlogs.authentication.service.AuthenticationService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.mail.MessagingException;
@@ -13,12 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import java.security.SecureRandom;
 
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import com.windlogs.authentication.entity.User;
 import com.windlogs.authentication.repository.UserRepository;
-import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/v1/auth")

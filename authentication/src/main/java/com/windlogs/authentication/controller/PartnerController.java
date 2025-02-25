@@ -1,7 +1,7 @@
 package com.windlogs.authentication.controller;
 
 import com.windlogs.authentication.dto.EmployeeCreationRequest;
-import com.windlogs.authentication.dto.ProjectRequest;
+import com.windlogs.authentication.dto.ProjectDto.ProjectRequest;
 import com.windlogs.authentication.entity.User;
 import com.windlogs.authentication.service.PartnerService;
 import io.swagger.v3.oas.annotations.tags.Tag;

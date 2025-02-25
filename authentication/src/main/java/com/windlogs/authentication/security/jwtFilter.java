@@ -56,7 +56,6 @@ public class jwtFilter extends OncePerRequestFilter {
                 filterChain.doFilter(request, response);
                 return;
             }
-
             final String authHeader = request.getHeader(AUTHORIZATION);
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 logger.warn("No valid authorization header found for protected path: {}", path);

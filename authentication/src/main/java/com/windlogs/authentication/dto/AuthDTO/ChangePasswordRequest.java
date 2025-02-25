@@ -1,4 +1,4 @@
-package com.windlogs.authentication.dto;
+package com.windlogs.authentication.dto.AuthDTO;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
