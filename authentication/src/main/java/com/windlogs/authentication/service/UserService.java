@@ -1,9 +1,10 @@
 package com.windlogs.authentication.service;
 
-import com.windlogs.authentication.dto.UpdateProfileRequest;
+import com.windlogs.authentication.dto.UserProfileDto.ProfileRequest;
+import com.windlogs.authentication.dto.UserProfileDto.ProfileResponse;
 import com.windlogs.authentication.entity.User;
 import com.windlogs.authentication.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,15 +17,17 @@ import java.io.InputStream;
 import java.nio.file.*;
 import java.nio.file.StandardCopyOption;
 import java.util.Date;
+import java.util.Optional;
 
 @Service
+@AllArgsConstructor
 public class UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
-    @Autowired
-    private UserRepository userRepository;
 
-    public User updateUserProfileByEmail(String email, UpdateProfileRequest request) throws IOException {
+    private final UserRepository userRepository;
+
+    public User updateUserProfileByEmail(String email, ProfileRequest request) throws IOException {
         logger.info("Updating profile for user with email: {}", email);
         String uploadDir = "public/images/";
         User existingUser = userRepository.findByEmail(email)
@@ -62,7 +65,7 @@ public class UserService {
             logger.info("Saving image to: {}", destination.toAbsolutePath().toString());
 
             Files.copy(inputStream, destination, StandardCopyOption.REPLACE_EXISTING);
-            existingUser.setImage(storageFileName);
+            existingUser.setImage("http://localhost:8222/images" + '/' + storageFileName);
         } catch (Exception e) {
             logger.error("Failed to save new image: {}", e.getMessage());
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
@@ -113,4 +116,26 @@ public class UserService {
         logger.info("Saving updated profile for user: {}", email);
         return userRepository.save(existingUser);
     }
+
+    public Optional<ProfileResponse> getUserDetailsByEmail(String email) {
+        return userRepository.findByEmail(email).map(this::convertToProfileResponse);
+    }
+
+    private ProfileResponse convertToProfileResponse(User user) {
+        return ProfileResponse.builder()
+                .firstname(user.getFirstname())
+                .lastname(user.getLastname())
+                .email(user.getEmail())
+                .image(user.getImage())
+                .role(user.getRole())
+                .bio(user.getBio())
+                .phone(user.getPhone())
+                .location(user.getLocation())
+                .company(user.getCompany())
+                .pronouns(user.getPronouns())
+                .lien(user.getLien())
+                .build();
+    }
+
+
 }

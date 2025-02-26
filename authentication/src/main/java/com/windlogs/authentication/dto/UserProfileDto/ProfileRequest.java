@@ -1,4 +1,4 @@
-package com.windlogs.authentication.dto;
+package com.windlogs.authentication.dto.UserProfileDto;
 
 import lombok.Data;
 import lombok.Builder;
@@ -10,7 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UpdateProfileRequest {
+public class ProfileRequest {
     private String firstname;
     private String lastname;
     private String email;

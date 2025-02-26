@@ -51,6 +51,11 @@ spring:
             allowCredentials: true
             exposedHeaders:
               - Authorization
+  web:
+    resources:
+      static-locations: classpath:/static/,file:./public/
+
 server:
   port: 8222
+
 
