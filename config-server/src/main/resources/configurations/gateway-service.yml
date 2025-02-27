@@ -28,6 +28,14 @@ spring:
             - RemoveRequestHeader=Cookie
             - RewritePath=/(?<segment>.*), /$\{segment}
             - AddRequestHeader=X-Forwarded-Prefix, /api/v1/users
+        - id: authentication-service-users
+          uri: lb://AUTHENTICATION-SERVICE
+          predicates:
+            - Path=/api/v1/admin/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RewritePath=/(?<segment>.*), /$\{segment}
+            - AddRequestHeader=X-Forwarded-Prefix, /api/v1/admin
       globalcors:
         corsConfigurations:
           '[/**]':

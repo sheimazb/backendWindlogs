@@ -40,7 +40,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/employees/create-project").hasAuthority("CREATE_PROJECT")
                         .requestMatchers(
                                 "/api/v1/auth/change-password",
-                                "/api/v1/users/update-profile/**"
+                                "/api/v1/users/update-profile/**",
+                                "/api/v1/admin/**"
                         ).authenticated()
 
 
