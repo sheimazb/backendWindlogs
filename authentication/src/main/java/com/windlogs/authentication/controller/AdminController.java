@@ -1,6 +1,7 @@
 package com.windlogs.authentication.controller;
 
 import com.windlogs.authentication.dto.UserProfileDto.PartnerResponse;
+import com.windlogs.authentication.entity.User;
 import com.windlogs.authentication.service.AdminService;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
@@ -9,9 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -28,7 +27,7 @@ public class AdminController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         if (userDetails == null) {
-            logger.error("UserDetails is null. Authentication might have failed.");
+            logger.error("UserDetails is null. Authentication might have failed");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
@@ -40,4 +39,35 @@ public class AdminController {
 
         return ResponseEntity.ok(partners);
     }
+
+    @PostMapping("/edit-status/{email}")
+    public ResponseEntity<User> editPartnerStatus(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String email,
+            @RequestBody PartnerResponse request) {
+
+        if (userDetails == null) {
+            logger.error("UserDetails is null. Authentication might have failed.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User updatedUser = adminService.editPartnerStatus(email, request);
+        return ResponseEntity.ok(updatedUser);
+    }
+
+    @DeleteMapping("/delete/{email}")
+    public ResponseEntity<Void> deletePartner(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String email) {
+
+        if (userDetails == null) {
+            logger.error("UserDetails is null.Authentication might have failed.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        logger.info("Received delete request for partner with email: {}", email);
+        adminService.deletePartner(email);
+        return ResponseEntity.noContent().build();
+    }
+
 }
