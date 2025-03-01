@@ -233,7 +233,36 @@ public enum EmailTemplateName {
                 </div>
             </body>
             </html>
-        """);
+        """),
+    PROFILE_STATUS("""
+  <!DOCTYPE html>
+                                   <html lang="fr">
+                                   <head>
+                                       <meta charset="UTF-8">
+                                       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                       <title>Statut de votre compte</title>
+                                       <style>
+                                           body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+                                           .container { max-width: 500px; margin: 50px auto; background: #ffffff; padding: 20px; border-radius: 8px; text-align: center; }
+                                           .header { background: ${accountStatusColor}; color: white; padding: 15px; font-size: 20px; font-weight: bold; border-radius: 8px 8px 0 0; }
+                                           .message { font-size: 16px; color: #333; margin: 20px 0; }
+                                           .btn { display: inline-block; padding: 10px 20px; background: ${accountStatusColor}; color: white; text-decoration: none; font-weight: bold; border-radius: 5px; }
+                                           .btn:hover { background: darken(${accountStatusColor}, 10%); }
+                                           .footer { margin-top: 20px; font-size: 12px; color: #777; }
+                                       </style>
+                                   </head>
+                                   <body>
+                                       <div class="container">
+                                           <div class="header">${accountStatusText}</div>
+                                           <p class="message">${message}</p>
+                                           <a href="${buttonLink}" class="btn">${buttonText}</a>
+                                           <p class="footer">© 2024 Votre Entreprise. Tous droits réservés.</p>
+                                       </div>
+                                   </body>
+                                   </html>
+            
+            
+""");
 
     private final String template;
 

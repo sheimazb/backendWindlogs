@@ -89,10 +89,61 @@ public class EmailService {
             helper.setText(htmlContent, true);
 
             mailSender.send(mimeMessage);
-            logger.info("✉️ Employee credentials email sent successfully to: {}", to);
+            logger.info(" Employee credentials email sent successfully to: {}", to);
         } catch (MessagingException e) {
-            logger.error("❌ Failed to send employee credentials email to: {} - Error: {}", to, e.getMessage());
+            logger.error("Failed to send employee credentials email to: {} - Error: {}", to, e.getMessage());
             throw e;
         }
     }
+    public void sendPartnerProfileStatus(
+            String to,
+            String subject,
+            boolean accountLocked,
+            Map<String, String> variables
+    ) throws MessagingException {
+        try {
+            logger.info("Preparing to send partner profile status to: {}", to);
+
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setFrom(fromEmail);
+
+            // Charger le template
+            String htmlContent = EmailTemplateName.PROFILE_STATUS.getTemplate();
+
+            // Définir le statut du compte
+            String accountStatusText = accountLocked ? "Votre compte est bloqué" : "Votre compte est actif";
+            String accountStatusColor = accountLocked ? "red" : "green";
+            String buttonText = accountLocked ? "Contacter le support" : "Accéder à mon compte";
+            String buttonLink = accountLocked ? "mailto:support@yourdomain.com" : "https://yourwebsite.com/login";
+            String message = accountLocked
+                    ? "Nous avons détecté une activité inhabituelle sur votre compte et l'avons temporairement bloqué."
+                    : "Bonne nouvelle ! Votre compte est actif et prêt à être utilisé.";
+
+            // Ajouter les nouvelles variables
+            variables.put("accountStatusText", accountStatusText);
+            variables.put("accountStatusColor", accountStatusColor);
+            variables.put("buttonText", buttonText);
+            variables.put("buttonLink", buttonLink);
+            variables.put("message", message);
+
+            // Remplacement optimisé des variables
+            for (Map.Entry<String, String> entry : variables.entrySet()) {
+                htmlContent = htmlContent.replace("${" + entry.getKey() + "}", entry.getValue());
+            }
+
+            logger.debug("Email HTML content: {}", htmlContent);
+            helper.setText(htmlContent, true);
+
+            mailSender.send(mimeMessage);
+            logger.info("Partner profile status email sent successfully to: {}", to);
+        } catch (MessagingException e) {
+            logger.error("Failed to send profile status email to: {} - Error: {}", to, e.getMessage());
+            throw e;
+        }
+    }
+
 }
