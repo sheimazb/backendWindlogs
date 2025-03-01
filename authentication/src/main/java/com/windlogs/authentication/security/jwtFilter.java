@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 @Component
@@ -37,7 +36,9 @@ public class jwtFilter extends OncePerRequestFilter {
             "/api/v1/auth/authenticate",
             "/api/v1/auth/activate-account",
             "/api/v1/auth/forgot_password",
-            "/api/v1/auth/reset_password"
+            "/api/v1/auth/reset_password",
+            "/api/v1/auth/request-password-change",
+            "/api/v1/auth/verify-and-change-password"
     );
 
     @Override
@@ -56,10 +57,11 @@ public class jwtFilter extends OncePerRequestFilter {
                 filterChain.doFilter(request, response);
                 return;
             }
+
             final String authHeader = request.getHeader(AUTHORIZATION);
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 logger.warn("No valid authorization header found for protected path: {}", path);
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                filterChain.doFilter(request, response);
                 return;
             }
 
@@ -70,7 +72,7 @@ public class jwtFilter extends OncePerRequestFilter {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
-                    logger.info("JWT token is valid for user: {}", userEmail);
+                    logger.debug("JWT token is valid for user: {}", userEmail);
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,
@@ -78,14 +80,11 @@ public class jwtFilter extends OncePerRequestFilter {
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                } else {
-                    logger.warn("Invalid JWT token for user: {}", userEmail);
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    return;
                 }
             }
 
             filterChain.doFilter(request, response);
+
         } catch (Exception e) {
             logger.error("Error in JWT filter: {}", e.getMessage(), e);
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
