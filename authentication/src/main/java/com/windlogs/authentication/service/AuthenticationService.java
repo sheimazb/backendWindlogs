@@ -30,7 +30,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.UUID;
+
 
 @Service
 @RequiredArgsConstructor
@@ -52,6 +52,12 @@ public class AuthenticationService {
      * finally: we need to send a validation email ( we need to implement an email sender service )
      */
 
+    private String generateRandomFourDigitNumber() {
+        SecureRandom random = new SecureRandom();
+        int number = 1000 + random.nextInt(9000); // Generates a number between 1000 and 9999
+        return String.valueOf(number);
+    }
+
     //Partner register, Role.PARTNER par le rôle par défaut que tu veux assigner aux nouveaux utilisateurs.
     public void register(RegistrationRequest request) throws MessagingException {
         logger.info("Starting registration process for email: {}", request.getEmail());
@@ -65,8 +71,6 @@ public class AuthenticationService {
         }
 
         try {
-
-
             var user = User.builder()
                     .firstname(request.getFirstname())
                     .lastname(request.getLastname())
@@ -75,7 +79,7 @@ public class AuthenticationService {
                     .accountLocked(false)
                     .enabled(false)
                     .role(Role.PARTNER) // ou un autre rôle par défaut
-                    .tenant(UUID.randomUUID().toString())
+                    .tenant(generateRandomFourDigitNumber())
                     .build();
 
             logger.info("Saving new user: {}", user.getEmail());
