@@ -1,7 +1,6 @@
 package com.windlogs.authentication.controller;
 
 import com.windlogs.authentication.dto.EmployeeCreationRequest;
-import com.windlogs.authentication.dto.ProjectDto.ProjectRequest;
 import com.windlogs.authentication.entity.User;
 import com.windlogs.authentication.service.PartnerService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -49,25 +48,5 @@ public class PartnerController {
         }
     }
 
-    @PostMapping("/create-project")
-    @PreAuthorize("hasAuthority('CREATE_PROJECT')")
-    public ResponseEntity<?> createProject(
-            @RequestBody @Valid ProjectRequest request,
-            Authentication authentication
-    ) {
-        try {
-            logger.info("Received project creation request for project: {}", request.getName());
-            User partner = (User) authentication.getPrincipal();
-            partnerService.createProject(request, partner);
-            return ResponseEntity.ok("Project created successfully!");
-        } catch (ResponseStatusException e) {
-            logger.error("Error creating project: {}", e.getReason());
-            return ResponseEntity.status(e.getStatusCode())
-                    .body(e.getReason());
-        } catch (Exception e) {
-            logger.error("Error creating project", e);
-            return ResponseEntity.internalServerError()
-                    .body("Failed to create project. Please try again.");
-        }
-    }
+
 }
