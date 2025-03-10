@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.http.HttpMethod;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
 
@@ -40,7 +41,11 @@ public class SecurityConfig {
                                 "/api/v1/auth/verify-and-change-password"
                         ).permitAll()
                         .requestMatchers("/api/v1/employees/create-staff").hasAuthority("CREATE_STAFF")
-                        .requestMatchers("/api/v1/employees/create-project").hasAuthority("CREATE_PROJECT")
+                        .requestMatchers("/api/v1/projects/create").hasAuthority("CREATE_PROJECT")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/projects/{projectId}/users/{userId}").hasAnyAuthority("CREATE_PROJECT", "CREATE_STAFF")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/projects/{projectId}/users/{userId}").hasAnyAuthority("CREATE_PROJECT", "CREATE_STAFF")
+                        .requestMatchers("/api/v1/projects/{id}/**").authenticated()
+                        .requestMatchers("/api/v1/projects/search").authenticated()
                         .requestMatchers(
                                 "/api/v1/auth/change-password",
                                 "/api/v1/users/update-profile/**",
