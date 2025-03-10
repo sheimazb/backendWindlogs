@@ -2,12 +2,9 @@ package com.windlogs.authentication.service;
 
 
 import com.windlogs.authentication.dto.EmployeeCreationRequest;
-import com.windlogs.authentication.dto.ProjectDto.ProjectRequest;
 import com.windlogs.authentication.email.EmailService;
-import com.windlogs.authentication.entity.Project;
 import com.windlogs.authentication.entity.Role;
 import com.windlogs.authentication.entity.User;
-import com.windlogs.authentication.repository.ProjectRepository;
 import com.windlogs.authentication.repository.UserRepository;
 import com.windlogs.authentication.security.JwtService;
 import jakarta.mail.MessagingException;
@@ -32,7 +29,6 @@ public class PartnerService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserRepository userRepository;
-    private final ProjectRepository projectRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
 
@@ -132,45 +128,4 @@ public class PartnerService {
         return password.toString();
     }
 
-    public void createProject(ProjectRequest request, User partner) {
-        logger.info("Starting project creation process for project: {}", request.getName());
-
-        // Verify that the requesting user is either an ADMIN or PARTNER
-        if (partner.getRole() != Role.PARTNER && partner.getRole() != Role.ADMIN) {
-            logger.warn("Unauthorized attempt to create project by unauthorized user: {}", partner.getEmail());
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Only partners or admins can create projects"
-            );
-        }
-
-        // Check if project name already exists
-        if (projectRepository.findByName(request.getName()).isPresent()) {
-            logger.warn("Project name already exists: {}", request.getName());
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "A project already exists with this name"
-            );
-        }
-
-        try {
-            // Create the Project with the partner's tenant
-            var project = Project.builder()
-                    .name(request.getName())
-                    .description(request.getDescription())
-                    .platform(request.getPlatform())
-                    .teams(request.getTeam())
-                    .tenant(partner.getTenant())
-                    .build();
-
-            project = projectRepository.save(project);
-            logger.info("Project creation completed successfully for: {}", project.getName());
-        } catch (Exception e) {
-            logger.error("Error during project creation: {}", e.getMessage(), e);
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to create project due to an internal error"
-            );
-        }
-    }
-}
+ }
