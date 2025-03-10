@@ -10,8 +10,6 @@ import java.util.Set;
 public enum Role {
     ADMIN(Set.of(
             Authority.CREATE_STAFF,
-            Authority.CREATE_PROJECT,
-            Authority.REGISTER,
             Authority.AUTHENTICATE,
             Authority.ACTIVATE_ACCOUNT
     )),
