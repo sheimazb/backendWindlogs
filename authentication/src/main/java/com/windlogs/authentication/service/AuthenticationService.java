@@ -76,7 +76,7 @@ public class AuthenticationService {
                     .lastname(request.getLastname())
                     .email(request.getEmail())
                     .password(passwordEncoder.encode(request.getPassword()))
-                    .accountLocked(false)
+                    .accountLocked(true)
                     .enabled(false)
                     .role(Role.PARTNER) // ou un autre rôle par défaut
                     .tenant(generateRandomFourDigitNumber())
@@ -152,6 +152,14 @@ public class AuthenticationService {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account not activated.");
             }
 
+            if (user.getRole() == Role.PARTNER && user.isAccountLocked()) {
+                logger.warn("Login attempt for locked partner account: {}", request.getEmail());
+                throw new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Your account is locked. Please wait for admin approval."
+                );
+            }
+
             // Check if account is locked
             if (user.isAccountLocked()) {
                 logger.warn("Login attempt for locked account: {}", request.getEmail());
@@ -165,6 +173,7 @@ public class AuthenticationService {
             var claims = new HashMap<String, Object>();
             claims.put("fullName", user.fullName());
             claims.put("role", user.getRole().name());
+            claims.put("id",user.getId().intValue());
             
             // For employees, add additional claims if needed
             if (user.getRole() == Role.DEVELOPER || user.getRole() == Role.TESTER) {
@@ -180,6 +189,7 @@ public class AuthenticationService {
                     .email(user.getEmail())
                     .fullName(user.getFullName())
                     .role(user.getRole().name())
+                    .id(user.getId().intValue())
                     .build();
 
         } catch (BadCredentialsException e) {
