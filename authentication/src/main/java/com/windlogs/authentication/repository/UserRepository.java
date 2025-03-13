@@ -21,4 +21,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findAllByRole(Role role);
     // You can add more custom query methods if needed
+    List<User> findByTenantAndRoleIn(String tenant, List<Role> roles);
 }

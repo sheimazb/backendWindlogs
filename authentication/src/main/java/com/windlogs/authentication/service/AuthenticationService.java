@@ -174,9 +174,9 @@ public class AuthenticationService {
             claims.put("fullName", user.fullName());
             claims.put("role", user.getRole().name());
             claims.put("id",user.getId().intValue());
-            
+            claims.put("tenant",user.getTenant());
             // For employees, add additional claims if needed
-            if (user.getRole() == Role.DEVELOPER || user.getRole() == Role.TESTER) {
+            if (user.getRole() == Role.DEVELOPER || user.getRole() == Role.TESTER ||user.getRole() == Role.MANAGER) {
                 claims.put("employeeType", user.getRole().name().toLowerCase());
             }
 
@@ -190,6 +190,7 @@ public class AuthenticationService {
                     .fullName(user.getFullName())
                     .role(user.getRole().name())
                     .id(user.getId().intValue())
+                    .tenant(user.getTenant())
                     .build();
 
         } catch (BadCredentialsException e) {
