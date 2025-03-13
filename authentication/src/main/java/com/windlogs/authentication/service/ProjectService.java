@@ -175,4 +175,15 @@ public class ProjectService {
                 .map(ProjectUser::getUser)
                 .collect(Collectors.toSet());
     }
+
+    //Get all project of user
+    public Set<Project> getProjectsUser(Long userId){
+        logger.info("Getting projects for users {}",userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("user not found"));
+        
+        return user.getProjectUsers().stream()
+                .map(ProjectUser::getProject)
+                .collect(Collectors.toSet());
+    }
 }

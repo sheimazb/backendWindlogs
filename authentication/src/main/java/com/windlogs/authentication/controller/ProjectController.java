@@ -246,7 +246,7 @@ public class ProjectController {
             }
 
             // 5. Verify user role is appropriate (must be TESTER or DEVELOPER)
-            if (userToAdd.getRole() != Role.TESTER && userToAdd.getRole() != Role.DEVELOPER) {
+            if (userToAdd.getRole() != Role.TESTER && userToAdd.getRole() != Role.DEVELOPER && userToAdd.getRole() != Role.MANAGER) {
                 logger.warn("Invalid role for user to add: {}", userToAdd.getRole());
                 throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
@@ -333,5 +333,29 @@ public class ProjectController {
         }
 
         return ResponseEntity.ok(projectService.getProjectUsers(projectId));
+    }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<Set<Project>> getUserProjects(
+            @PathVariable Long userId,
+            Authentication authentication) {
+        User authenticatedUser = (User) authentication.getPrincipal();
+        
+        // Verify user exists
+        User targetUser = projectService.getUserById(userId)
+                .orElseThrow(() -> new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "User not found with id: " + userId
+                ));
+
+        // Verify tenant access
+        if (!targetUser.getTenant().equals(authenticatedUser.getTenant())) {
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "You don't have access to this user's projects"
+            );
+        }
+
+        return ResponseEntity.ok(projectService.getProjectsUser(userId));
     }
 }
