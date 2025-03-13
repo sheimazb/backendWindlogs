@@ -48,5 +48,34 @@ public class PartnerController {
         }
     }
 
+    @GetMapping("/my-staff")
+    @PreAuthorize("hasAuthority('VIEW_STAFF')")
+    public ResponseEntity<?> getEmployeesByPartnerTenant(Authentication authentication) {
+        try {
+            logger.info("Received request to fetch employees for authenticated partner");
+            User partner = (User) authentication.getPrincipal();
+            return ResponseEntity.ok(partnerService.getEmployeesByPartnerTenant(partner));
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(e.getReason());
+        } catch (Exception e) {
+            logger.error("Error retrieving employees", e);
+            return ResponseEntity.internalServerError().body("Failed to retrieve employees. Please try again.");
+        }
+    }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('VIEW_STAFF')")
+    public ResponseEntity<?> getEmployeeById(@PathVariable Long id, Authentication authentication) {
+        try {
+            User partner = (User) authentication.getPrincipal();
+            return ResponseEntity.ok(partnerService.getEmployeeById(id, partner));
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(e.getReason());
+        } catch (Exception e) {
+            logger.error("Error retrieving employee", e);
+            return ResponseEntity.internalServerError()
+                    .body("Failed to fetch employee details. Please try again.");
+        }
+    }
 }

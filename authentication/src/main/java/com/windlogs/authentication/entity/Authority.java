@@ -5,5 +5,6 @@ public enum Authority {
     CREATE_PROJECT,
     REGISTER,
     ACTIVATE_ACCOUNT,
-    AUTHENTICATE
+    AUTHENTICATE,
+    VIEW_STAFF
 }

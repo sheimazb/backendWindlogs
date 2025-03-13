@@ -18,12 +18,16 @@ public enum Role {
             Authority.AUTHENTICATE,
             Authority.ACTIVATE_ACCOUNT,
             Authority.CREATE_STAFF,
-            Authority.CREATE_PROJECT
+            Authority.CREATE_PROJECT,
+            Authority.VIEW_STAFF
     )),
     TESTER(Set.of(
             Authority.AUTHENTICATE
     )),
     DEVELOPER(Set.of(
+            Authority.AUTHENTICATE
+    )),
+    MANAGER(Set.of(
             Authority.AUTHENTICATE
     ));
 

@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -48,7 +49,7 @@ public class PartnerService {
         }
 
         // Verify that the requested role is either TESTER or DEVELOPER
-        if (request.getRole() != Role.TESTER && request.getRole() != Role.DEVELOPER) {
+        if (request.getRole() != Role.TESTER && request.getRole() != Role.DEVELOPER && request.getRole() != Role.MANAGER) {
             logger.warn("Invalid role requested: {}", request.getRole());
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
@@ -88,7 +89,6 @@ public class PartnerService {
             claims.put("fullName", user.fullName());
             claims.put("role", user.getRole().name());
             claims.put("tenant", user.getTenant()); // Include tenant in claims
-            String token = jwtService.generateToken(claims, user);
 
             // Send credentials via email
             sendEmployeeCredentials(user, randomPassword, partner);
@@ -128,4 +128,32 @@ public class PartnerService {
         return password.toString();
     }
 
- }
+    public List<User> getEmployeesByPartnerTenant(User partner) {
+        logger.info("fetching employees for partner : {}", partner.getEmail());
+
+        //ensure the requesting user have a partner role
+        if (partner.getRole() != Role.PARTNER) {
+            logger.warn("Unauthorized attempt to fetch employees by non-partner user: {}", partner.getEmail());
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "only partners can get employee accounts"
+            );
+        }
+
+        //fetch list employees who belong to the same tenant as the partner
+        List<User> employees = userRepository.findByTenantAndRoleIn(
+                partner.getTenant(),
+                List.of(Role.TESTER, Role.DEVELOPER, Role.MANAGER)
+        );
+        logger.info("found {} employees for partner {}", employees.size(), partner.getEmail());
+        return employees;
+
+    }
+
+    public User getEmployeeById(Long id, User partner) {
+        return userRepository.findById(id)
+                .filter(user -> user.getTenant().equals(partner.getTenant())) // Ensure it's within the same tenant
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee not found"));
+    }
+
+}
