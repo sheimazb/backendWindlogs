@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "logs")
@@ -24,6 +26,7 @@ public class Log {
 
     private LocalDateTime timestamp;
 
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     private String source;
@@ -36,4 +39,18 @@ public class Log {
     private LogSeverity severity;
 
     private LocalDateTime createdAt;
+
+    @Column(name = "project_id")
+    private Long projectId;
+
+    @OneToMany(mappedBy = "log", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Ticket> tickets = new ArrayList<>();
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        if (timestamp == null) {
+            timestamp = createdAt;
+        }
+    }
 }
