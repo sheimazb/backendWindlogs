@@ -14,4 +14,10 @@ public class AuthenticationFeignFallback implements AuthenticationFeignClient {
         logger.error("Fallback for getAuthenticatedUser called with token: {}", token);
         throw new RuntimeException("Authentication service is not available");
     }
+    
+    @Override
+    public UserResponseDTO getUserById(Long userId, String token) {
+        logger.error("Fallback for getUserById called with userId: {}", userId);
+        throw new RuntimeException("Authentication service is not available");
+    }
 } 
