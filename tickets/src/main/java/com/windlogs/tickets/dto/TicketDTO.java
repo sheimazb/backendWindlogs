@@ -16,4 +16,6 @@ public class TicketDTO{
     private String tenant;
     private Long userId;
     private String userEmail;
+    private Long logId;
+    private Boolean hasSolution;
 }

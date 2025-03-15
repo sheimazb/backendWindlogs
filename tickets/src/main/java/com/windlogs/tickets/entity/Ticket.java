@@ -33,6 +33,13 @@ public class Ticket {
     @Column(name = "assigned_to_user_id")
     private Long assignedToUserId;
 
+    /**
+     * The tenant identifier for this ticket.
+     * This field is critical for multi-tenancy and must always be set.
+     * It represents the organization/tenant that the ticket belongs to,
+     * and is inherited from the manager who creates the ticket.
+     */
+    @Column(name = "tenant", nullable = false)
     private String tenant;
     
     @Column(name = "creator_user_id")
