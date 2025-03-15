@@ -1,6 +1,7 @@
 package com.windlogs.authentication.controller;
 
 import com.windlogs.authentication.dto.AuthDTO.*;
+import com.windlogs.authentication.entity.Role;
 import com.windlogs.authentication.entity.User;
 import com.windlogs.authentication.service.AuthenticationService;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -68,11 +69,14 @@ public class AuthenticationController {
         }
         
         User user = (User) authentication.getPrincipal();
+        logger.info("Getting current user: {}, tenant: {}", user.getEmail(), user.getTenant());
+        
         UserResponse userResponse = UserResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .role(user.getRole().name())
+                .tenant(user.getTenant())
                 .build();
                 
         return ResponseEntity.ok(userResponse);
@@ -128,5 +132,46 @@ public class AuthenticationController {
     public ResponseEntity<String> verifyAndChangePassword(@RequestBody @Valid VerifyChangePasswordRequest request) {
         authenticationService.verifyAndChangePassword(request);
         return ResponseEntity.ok("Password changed successfully!");
+    }
+
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<UserResponse> getUserById(
+            @PathVariable Long userId,
+            Authentication authentication) {
+        
+        if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
+            return ResponseEntity.status(401).build();
+        }
+        
+        User authenticatedUser = (User) authentication.getPrincipal();
+        logger.info("Getting user by ID: {}, requested by: {}", userId, authenticatedUser.getEmail());
+        
+        // Get the user from the repository
+        User user = userRepository.findById(userId)
+                .orElse(null);
+        
+        if (user == null) {
+            logger.warn("User not found with ID: {}", userId);
+            return ResponseEntity.notFound().build();
+        }
+        
+        // Check if the authenticated user has access to this user's information
+        // Only allow access to users in the same tenant
+        if (!authenticatedUser.getTenant().equals(user.getTenant()) && 
+            !authenticatedUser.getRole().equals(Role.ADMIN)) {
+            logger.warn("Unauthorized attempt to access user information. Requester tenant: {}, Target tenant: {}", 
+                    authenticatedUser.getTenant(), user.getTenant());
+            return ResponseEntity.status(403).build();
+        }
+        
+        UserResponse userResponse = UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .tenant(user.getTenant())
+                .build();
+        
+        return ResponseEntity.ok(userResponse);
     }
 }
