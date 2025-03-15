@@ -8,4 +8,5 @@ public class UserResponseDTO {
     private String username;
     private String email;
     private String role; // e.g., ADMIN, USER
+    private String tenant; // Added tenant field to track user's organization
 }
