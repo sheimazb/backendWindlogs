@@ -60,6 +60,22 @@ spring:
             - RemoveRequestHeader=Cookie
             - RewritePath=/(?<segment>.*), /$\{segment}
             - AddRequestHeader=X-Forwarded-Prefix, /api/v1/solutions
+        - id: tickets-service-logs
+          uri: lb://TICKETS
+          predicates:
+            - Path=/api/v1/logs/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RewritePath=/(?<segment>.*), /$\{segment}
+            - AddRequestHeader=X-Forwarded-Prefix, /api/v1/logs
+        - id: notification-service
+          uri: lb://NOTIFICATION-SERVICE
+          predicates:
+            - Path=/api/v1/notifications/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RewritePath=/(?<segment>.*), /$\{segment}
+            - AddRequestHeader=X-Forwarded-Prefix, /api/v1/notifications
       globalcors:
         corsConfigurations:
           '[/**]':

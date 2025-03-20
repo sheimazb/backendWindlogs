@@ -1,0 +1,61 @@
+spring:
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+    file-size-threshold: 2MB
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5432/notification
+    username: postgres
+    password: ${DB_PASSWORD:0000}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database: POSTGRESQL
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      bootstrap-servers: localhost:9092
+      group-id: notification-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.windlogs.tickets.kafka,com.windlogs.notification.kafka"
+        spring.json.type.mapping: logEvent:com.windlogs.notification.kafka.LogEvent
+
+# Authentication service configuration
+authentication:
+  service:
+    url: ${AUTHENTICATION_SERVICE_URL:http://localhost:8088}
+
+# Eureka client configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: true
+
+# Logging configuration
+logging:
+  level:
+    com:
+      windlogs:
+        notification: DEBUG
+    org:
+      springframework:
+        kafka: INFO
+
+server:
+  port: 8084 
