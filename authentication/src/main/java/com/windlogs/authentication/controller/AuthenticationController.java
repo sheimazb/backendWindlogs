@@ -15,6 +15,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import java.security.SecureRandom;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import com.windlogs.authentication.repository.UserRepository;
 
@@ -173,5 +175,53 @@ public class AuthenticationController {
                 .build();
         
         return ResponseEntity.ok(userResponse);
+    }
+    
+    /**
+     * Get users by tenant and role
+     * This endpoint is used by the notification service to get managers for sending notifications
+     * @param tenant The tenant to filter by
+     * @param role The role to filter by (e.g., MANAGER)
+     * @return List of users with the specified tenant and role
+     */
+    @GetMapping("/users/tenant/{tenant}/role/{role}")
+    public ResponseEntity<List<UserResponse>> getUsersByTenantAndRole(
+            @PathVariable String tenant,
+            @PathVariable String role) {
+        
+        logger.info("Getting users with tenant: {} and role: {}", tenant, role);
+        
+        try {
+            Role roleEnum = Role.valueOf(role.toUpperCase());
+            
+            List<User> users = userRepository.findByTenantAndRoleIn(
+                    tenant, 
+                    List.of(roleEnum)
+            );
+            
+            if (users.isEmpty()) {
+                logger.info("No users found with tenant: {} and role: {}", tenant, role);
+                return ResponseEntity.ok(List.of());
+            }
+            
+            List<UserResponse> userResponses = users.stream()
+                    .map(user -> UserResponse.builder()
+                            .id(user.getId())
+                            .username(user.getUsername())
+                            .email(user.getEmail())
+                            .role(user.getRole().name())
+                            .tenant(user.getTenant())
+                            .build())
+                    .collect(Collectors.toList());
+            
+            logger.info("Found {} users with tenant: {} and role: {}", users.size(), tenant, role);
+            return ResponseEntity.ok(userResponses);
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid role: {}", role, e);
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            logger.error("Error getting users by tenant and role", e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
