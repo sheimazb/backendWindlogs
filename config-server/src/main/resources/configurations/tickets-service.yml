@@ -4,7 +4,7 @@ server:
 spring:
   application:
     name: tickets
-   datasource:
+  datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://localhost:5432/tickets
     username: postgres
@@ -19,6 +19,14 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      bootstrap-servers: localhost:9092
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.type.mapping: ticketP:com.windlogs.tickets.kafka.TicketP,logEvent:com.windlogs.tickets.kafka.LogEvent
 
 # Eureka client configuration
 eureka:

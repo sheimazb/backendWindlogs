@@ -6,9 +6,12 @@ import com.windlogs.tickets.dto.UserResponseDTO;
 import com.windlogs.tickets.entity.Log;
 import com.windlogs.tickets.entity.Ticket;
 import com.windlogs.tickets.exception.UnauthorizedException;
+import com.windlogs.tickets.kafka.TicketP;
+import com.windlogs.tickets.kafka.TicketProducer;
 import com.windlogs.tickets.mapper.TicketMapper;
 import com.windlogs.tickets.repository.SolutionRepository;
 import com.windlogs.tickets.repository.TicketRepository;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -20,6 +23,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class TicketService {
     private static final Logger logger = LoggerFactory.getLogger(TicketService.class);
     private final TicketRepository ticketRepository;
@@ -27,14 +31,7 @@ public class TicketService {
     private final AuthService authService;
     private final LogService logService;
     private final SolutionRepository solutionRepository;
-
-    public TicketService(TicketRepository ticketRepository, TicketMapper ticketMapper, AuthService authService, LogService logService, SolutionRepository solutionRepository) {
-        this.ticketRepository = ticketRepository;
-        this.ticketMapper = ticketMapper;
-        this.authService = authService;
-        this.logService = logService;
-        this.solutionRepository = solutionRepository;
-    }
+    private final TicketProducer ticketProducer;
 
     // Create a new ticket
     public TicketDTO createTicket(TicketDTO ticketDTO) {
@@ -75,7 +72,7 @@ public class TicketService {
         }
         
         // Set creator user ID
-        ticket.setCreatorUserId(ticketDTO.getUserId());
+        ticket.setCreatorUserId(ticketDTO.getCreatorUserId());
         
         // Set user email
         ticket.setUserEmail(ticketDTO.getUserEmail());
@@ -103,6 +100,16 @@ public class TicketService {
         
         logger.info("Ticket created successfully with ID: {}, tenant: {}, logId: {}", 
                 resultDTO.getId(), resultDTO.getTenant(), resultDTO.getLogId());
+
+        ticketProducer.sendTicketP(
+                new TicketP(
+                        resultDTO.getStatus(),
+                        resultDTO.getUserEmail(),
+                        resultDTO.getTitle(),
+                        resultDTO.getDescription(),
+                        resultDTO.getTenant()
+                )
+        );
         
         return resultDTO;
     }
@@ -132,9 +139,33 @@ public class TicketService {
             ticket.setTenant(tenant);
             // Preserve creator user ID
             ticket.setCreatorUserId(existingTicket.get().getCreatorUserId());
+            // Preserve log reference
+            ticket.setLog(existingTicket.get().getLog());
+            
+            // Ensure title and description are set
+            if (ticket.getTitle() == null || ticket.getTitle().isEmpty()) {
+                ticket.setTitle(existingTicket.get().getTitle());
+            }
+            
+            if (ticket.getDescription() == null || ticket.getDescription().isEmpty()) {
+                ticket.setDescription(existingTicket.get().getDescription());
+            }
             
             Ticket updatedTicket = ticketRepository.save(ticket);
-            return ticketMapper.toDTO(updatedTicket);
+            TicketDTO updatedTicketDTO = ticketMapper.toDTO(updatedTicket);
+            
+            // Send Kafka message for the update
+            ticketProducer.sendTicketP(
+                new TicketP(
+                    updatedTicketDTO.getStatus(),
+                    updatedTicketDTO.getUserEmail(),
+                    updatedTicketDTO.getTitle(),
+                    updatedTicketDTO.getDescription(),
+                    updatedTicketDTO.getTenant()
+                )
+            );
+            
+            return updatedTicketDTO;
         }
         
         return null;
@@ -225,4 +256,6 @@ public class TicketService {
         
         return ticketDTO;
     }
+
+
 }

@@ -21,10 +21,12 @@ public class TicketMapperImpl implements TicketMapper {
         ticketDTO.setStatus(ticket.getStatus());
         ticketDTO.setAttachments(ticket.getAttachments());
         ticketDTO.setPriority(ticket.getPriority());
-        
+        ticketDTO.setTitle(ticket.getTitle());
+        ticketDTO.setDescription(ticket.getDescription());
+
         // Set assignedTo if present
         if (ticket.getAssignedToUserId() != null) {
-            ticketDTO.setAssignedTo(ticket.getAssignedToUserId().toString());
+            ticketDTO.setAssignedToUserId(Long.valueOf(ticket.getAssignedToUserId().toString()));
         }
         
         // Ensure tenant is set - this is critical
@@ -35,7 +37,7 @@ public class TicketMapperImpl implements TicketMapper {
         ticketDTO.setTenant(tenant);
         
         // Set user information
-        ticketDTO.setUserId(ticket.getCreatorUserId());
+        ticketDTO.setCreatorUserId(ticket.getCreatorUserId());
         ticketDTO.setUserEmail(ticket.getUserEmail());
         
         // Set log ID if present
@@ -60,13 +62,15 @@ public class TicketMapperImpl implements TicketMapper {
         ticket.setStatus(ticketDTO.getStatus());
         ticket.setAttachments(ticketDTO.getAttachments());
         ticket.setPriority(ticketDTO.getPriority());
-        
+        ticket.setTitle(ticketDTO.getTitle());
+        ticket.setDescription(ticketDTO.getDescription());
+
         // Set assignedToUserId if present
-        if (ticketDTO.getAssignedTo() != null && !ticketDTO.getAssignedTo().isEmpty()) {
+        if (ticketDTO.getAssignedToUserId() != null) {
             try {
-                ticket.setAssignedToUserId(Long.parseLong(ticketDTO.getAssignedTo()));
+                ticket.setAssignedToUserId(Long.parseLong(String.valueOf(ticketDTO.getAssignedToUserId())));
             } catch (NumberFormatException e) {
-                logger.warn("Could not parse assignedTo as Long: {}", ticketDTO.getAssignedTo());
+                logger.warn("Could not parse assignedTo as Long: {}", ticketDTO.getAssignedToUserId());
             }
         }
         
@@ -78,7 +82,7 @@ public class TicketMapperImpl implements TicketMapper {
         ticket.setTenant(tenant);
         
         // Set user information
-        ticket.setCreatorUserId(ticketDTO.getUserId());
+        ticket.setCreatorUserId(ticketDTO.getCreatorUserId());
         ticket.setUserEmail(ticketDTO.getUserEmail());
         
         // Note: Log entity will be set by the service

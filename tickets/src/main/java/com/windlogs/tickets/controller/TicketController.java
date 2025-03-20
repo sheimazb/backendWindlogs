@@ -9,10 +9,8 @@ import com.windlogs.tickets.service.SolutionService;
 import com.windlogs.tickets.service.TicketService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -20,6 +18,7 @@ import java.util.List;
 @RequestMapping("/api/v1/tickets")
 public class TicketController {
     private static final Logger logger = LoggerFactory.getLogger(TicketController.class);
+
     private final TicketService ticketService;
     private final AuthService authService;
     private final SolutionService solutionService;
@@ -30,213 +29,91 @@ public class TicketController {
         this.solutionService = solutionService;
     }
 
-    // Create a ticket - only managers can create tickets
+    private void validateManager(UserResponseDTO user) {
+        if (!"MANAGER".equalsIgnoreCase(user.getRole())) {
+            logger.error("Unauthorized action by non-manager: {}", user.getEmail());
+            throw new UnauthorizedException("Only managers can perform this action");
+        }
+    }
+
+    // 🔹 Créer un ticket (seulement pour les MANAGERS)
     @PostMapping
     public ResponseEntity<TicketDTO> createTicket(
             @RequestBody TicketDTO ticketDTO,
             @RequestHeader("Authorization") String authorizationHeader) {
-        
-        logger.info("Creating ticket with authorization header");
-        
-        // Get the authenticated user from the authentication service
+
+        logger.info("Received request to create a ticket");
+
         UserResponseDTO manager = authService.getAuthenticatedUser(authorizationHeader);
-        logger.info("Authenticated manager: ID={}, email={}, role={}, tenant={}", 
-                manager.getId(), manager.getEmail(), manager.getRole(), manager.getTenant());
-        
-        // Check if the user has MANAGER role
-        if (!"MANAGER".equalsIgnoreCase(manager.getRole())) {
-            logger.error("Unauthorized attempt to create ticket by non-manager user: {}", manager.getEmail());
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only managers can create tickets");
-        }
-        
-        // Validate manager's tenant
-        if (manager.getTenant() == null || manager.getTenant().isEmpty()) {
-            logger.error("Manager has no tenant assigned: {}", manager.getEmail());
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Manager has no tenant assigned");
-        }
-        
-        // Validate log ID
+        validateManager(manager);
+
         if (ticketDTO.getLogId() == null) {
-            logger.error("No log ID provided for ticket");
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Log ID must be specified when creating a ticket");
+            return ResponseEntity.badRequest().body(null);
         }
-        
-        // Set the creator information in the ticket
-        ticketDTO.setUserId(manager.getId());
+
+        ticketDTO.setCreatorUserId(manager.getId());
         ticketDTO.setUserEmail(manager.getEmail());
-        
-        // Explicitly set the tenant from the manager's tenant - overriding any tenant that might have been in the request
-        String managerTenant = manager.getTenant();
-        ticketDTO.setTenant(managerTenant);
-        
-        logger.info("Creating ticket for manager: {} with tenant: {}, logId: {}", 
-                manager.getEmail(), managerTenant, ticketDTO.getLogId());
-        
-        // Create the ticket
+        ticketDTO.setTenant(manager.getTenant());
+
         TicketDTO createdTicket = ticketService.createTicket(ticketDTO);
-        
-        // Verify tenant was set correctly
-        if (createdTicket.getTenant() == null || !managerTenant.equals(createdTicket.getTenant())) {
-            logger.error("Tenant was not set correctly in the created ticket. Expected: {}, Got: {}", 
-                    managerTenant, createdTicket.getTenant());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to set tenant in ticket");
-        }
-        
-        logger.info("Ticket created successfully with ID: {}, tenant: {}, logId: {}", 
-                createdTicket.getId(), createdTicket.getTenant(), createdTicket.getLogId());
-        
-        return ResponseEntity.ok(createdTicket);
-    }
-    
-    // Temporary endpoint for testing without authentication service
-    @PostMapping("/test")
-    public ResponseEntity<TicketDTO> createTicketTest(@RequestBody TicketDTO ticketDTO) {
-        logger.info("Creating test ticket without authentication");
-        
-        // Simulate a manager user
-        Long managerId = 1L;
-        String managerEmail = "test-manager@example.com";
-        String managerTenant = "test-tenant";
-        
-        logger.info("Simulating manager: ID={}, email={}, tenant={}", managerId, managerEmail, managerTenant);
-        
-        // Set creator information
-        ticketDTO.setUserId(managerId);
-        ticketDTO.setUserEmail(managerEmail);
-        
-        // Explicitly set the tenant from the simulated manager
-        ticketDTO.setTenant(managerTenant);
-        
-        // Validate log ID
-        if (ticketDTO.getLogId() == null) {
-            logger.error("No log ID provided for test ticket");
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Log ID must be specified when creating a ticket");
-        }
-        
-        logger.info("Creating test ticket with tenant: {}, logId: {}", managerTenant, ticketDTO.getLogId());
-        
-        // Create the ticket
-        TicketDTO createdTicket = ticketService.createTicket(ticketDTO);
-        
-        // Verify tenant was set correctly
-        if (createdTicket.getTenant() == null || !managerTenant.equals(createdTicket.getTenant())) {
-            logger.error("Tenant was not set correctly in the test ticket. Expected: {}, Got: {}", 
-                    managerTenant, createdTicket.getTenant());
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to set tenant in test ticket");
-        }
-        
-        logger.info("Test ticket created successfully with ID: {}, tenant: {}, logId: {}", 
-                createdTicket.getId(), createdTicket.getTenant(), createdTicket.getLogId());
-        
         return ResponseEntity.ok(createdTicket);
     }
 
-    // Assign ticket to a user (developer or tester)
+
     @PutMapping("/{id}/assign")
     public ResponseEntity<TicketDTO> assignTicket(
-            @PathVariable Long id, 
+            @PathVariable Long id,
             @RequestParam Long assignedToUserId,
             @RequestHeader("Authorization") String authorizationHeader) {
-        
-        // Get the authenticated user (manager)
+
         UserResponseDTO manager = authService.getAuthenticatedUser(authorizationHeader);
-        
-        // Check if the user has MANAGER role
-        if (!"MANAGER".equalsIgnoreCase(manager.getRole())) {
-            logger.error("Unauthorized attempt to assign ticket by non-manager user: {}", manager.getEmail());
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only managers can assign tickets");
-        }
-        
-        // Assign the ticket to the user with tenant validation
+        validateManager(manager);
+
         TicketDTO updatedTicket = ticketService.assignTicket(id, assignedToUserId, manager.getTenant(), authorizationHeader);
         return ResponseEntity.ok(updatedTicket);
     }
 
-    // Get all tickets for the current user's tenant
+    //  Récupérer tous les tickets d'un tenant
     @GetMapping
-    public ResponseEntity<List<TicketDTO>> getAllTickets(
-            @RequestHeader("Authorization") String authorizationHeader) {
-        
-        // Get the authenticated user
+    public ResponseEntity<List<TicketDTO>> getAllTickets(@RequestHeader("Authorization") String authorizationHeader) {
         UserResponseDTO user = authService.getAuthenticatedUser(authorizationHeader);
-        
-        // Get tickets for the user's tenant
         return ResponseEntity.ok(ticketService.getTicketsByTenant(user.getTenant()));
     }
 
-    // Get a ticket by ID
+    // Récupérer un ticket par ID
     @GetMapping("/{id}")
-    public ResponseEntity<TicketDTO> getTicketById(
-            @PathVariable Long id,
-            @RequestHeader("Authorization") String authorization) {
-        logger.info("Received request to get ticket with ID: {}", id);
-
-        // Get authenticated user
-        UserResponseDTO user = authService.getAuthenticatedUser(authorization);
-
-        // Get the ticket with solution information
+    public ResponseEntity<TicketDTO> getTicketById(@PathVariable Long id, @RequestHeader("Authorization") String authorizationHeader) {
+        logger.info("Fetching ticket with ID: {}", id);
+        UserResponseDTO user = authService.getAuthenticatedUser(authorizationHeader);
         TicketDTO ticketDTO = ticketService.getTicketWithSolutionInfo(id, user.getTenant());
-
         return ResponseEntity.ok(ticketDTO);
     }
 
-    // Update ticket with tenant validation
+    // Mettre à jour un ticket
     @PutMapping("/{id}")
-    public ResponseEntity<TicketDTO> updateTicket(
-            @PathVariable Long id, 
-            @RequestBody TicketDTO ticketDTO,
-            @RequestHeader("Authorization") String authorizationHeader) {
-        
-        // Get the authenticated user
+    public ResponseEntity<TicketDTO> updateTicket(@PathVariable Long id, @RequestBody TicketDTO ticketDTO,
+                                                  @RequestHeader("Authorization") String authorizationHeader) {
         UserResponseDTO user = authService.getAuthenticatedUser(authorizationHeader);
-        
-        // Ensure tenant is not changed
         ticketDTO.setTenant(user.getTenant());
-        
-        // Update the ticket with tenant validation
+
         TicketDTO updatedTicket = ticketService.updateTicketWithTenantValidation(id, ticketDTO, user.getTenant());
-        return (updatedTicket != null) ? ResponseEntity.ok(updatedTicket) : ResponseEntity.notFound().build();
+        return updatedTicket != null ? ResponseEntity.ok(updatedTicket) : ResponseEntity.notFound().build();
     }
 
-    // Delete ticket with tenant validation
+    //  Supprimer un ticket
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTicket(
-            @PathVariable Long id,
-            @RequestHeader("Authorization") String authorizationHeader) {
-        
-        // Get the authenticated user
+    public ResponseEntity<Void> deleteTicket(@PathVariable Long id, @RequestHeader("Authorization") String authorizationHeader) {
         UserResponseDTO user = authService.getAuthenticatedUser(authorizationHeader);
-        
-        // Delete the ticket with tenant validation
-        return ticketService.deleteTicketWithTenantValidation(id, user.getTenant()) 
-            ? ResponseEntity.ok().build() 
-            : ResponseEntity.notFound().build();
+        return ticketService.deleteTicketWithTenantValidation(id, user.getTenant()) ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
     }
 
-    /**
-     * Get the solution for a ticket
-     * @param ticketId The ticket ID
-     * @param authorization The authorization header
-     * @return The solution for the ticket
-     */
+    //  Récupérer la solution d'un ticket
     @GetMapping("/{ticketId}/solution")
-    public ResponseEntity<SolutionDTO> getTicketSolution(@PathVariable Long ticketId,
-                                                       @RequestHeader("Authorization") String authorization) {
-        logger.info("Received request to get solution for ticket ID: {}", ticketId);
-        
-        // Get authenticated user
+    public ResponseEntity<SolutionDTO> getTicketSolution(@PathVariable Long ticketId, @RequestHeader("Authorization") String authorization) {
+        logger.info("Fetching solution for ticket ID: {}", ticketId);
         UserResponseDTO user = authService.getAuthenticatedUser(authorization);
-        
-        try {
-            // Get the solution
-            SolutionDTO solution = solutionService.getSolutionByTicketId(ticketId, user.getTenant());
-            return ResponseEntity.ok(solution);
-        } catch (ResponseStatusException e) {
-            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
-                logger.info("No solution found for ticket ID: {}", ticketId);
-                return ResponseEntity.notFound().build();
-            }
-            throw e;
-        }
+
+        SolutionDTO solution = solutionService.getSolutionByTicketId(ticketId, user.getTenant());
+        return solution != null ? ResponseEntity.ok(solution) : ResponseEntity.notFound().build();
     }
 }
