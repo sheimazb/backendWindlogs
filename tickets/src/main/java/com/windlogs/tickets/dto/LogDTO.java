@@ -14,7 +14,9 @@ public class LogDTO {
     private String description;
     private String source;
     private String errorCode;
+    private String tenant;
     private String customMessage;
     private LogSeverity severity;
     private Long projectId;
+    private String userEmail;
 } 

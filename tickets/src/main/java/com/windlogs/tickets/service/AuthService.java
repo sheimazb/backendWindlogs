@@ -21,7 +21,7 @@ public class AuthService {
     public UserResponseDTO getAuthenticatedUser(String authorizationHeader) {
         logger.info("Getting authenticated user with authorization header");
         
-        // Make sure the header is properly formatted
+
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             logger.error("Invalid authorization header format");
             throw new RuntimeException("Invalid authorization header format");

@@ -18,7 +18,8 @@ import java.util.List;
 @NoArgsConstructor
 public class Log {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "log_seq")
+    @SequenceGenerator(name = "log_seq", sequenceName = "log_seq", allocationSize = 1)
     private Long id;
 
     @Enumerated(EnumType.STRING)
@@ -37,6 +38,8 @@ public class Log {
 
     @Enumerated(EnumType.STRING)
     private LogSeverity severity;
+
+    private String tenant;
 
     private LocalDateTime createdAt;
 

@@ -8,11 +8,7 @@ import java.util.Optional;
 
 public interface LogRepository extends JpaRepository<Log, Long> {
     
-    /**
-     * Find all logs for a specific tenant
-     * @param tenant The tenant identifier
-     * @return List of logs for the tenant
-     */
+
     List<Log> findByProjectIdIn(List<Long> projectIds);
     
     /**
@@ -21,4 +17,11 @@ public interface LogRepository extends JpaRepository<Log, Long> {
      * @return List of logs for the project
      */
     List<Log> findByProjectId(Long projectId);
-} 
+
+    /**
+     * Find all logs for a specific tenant
+     * @param tenant The tenant identifier
+     * @return List of logs for the tenant
+     */
+    List<Log> findByTenant(String tenant);
+}

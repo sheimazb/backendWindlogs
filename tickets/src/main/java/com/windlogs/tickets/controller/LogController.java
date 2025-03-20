@@ -73,6 +73,61 @@ public class LogController {
     }
 
     /**
+     * Get a log by Tenant
+     * @param logTenant The log Tenant
+     * @param authorizationHeader The authorization header
+     * @return The log if found
+     */
+    @GetMapping("/logs-by-tenant/{logTenant}")
+    public ResponseEntity<List<LogDTO>> getLogByTenant(
+            @PathVariable String logTenant,
+            @RequestHeader("Authorization") String authorizationHeader) {
+
+        // Get the authenticated user
+        UserResponseDTO user = authService.getAuthenticatedUser(authorizationHeader);
+        logger.info("Getting logs with Tenant: {}, requested by: {}", logTenant, user.getEmail());
+
+        // Get the logs
+        List<Log> logs = logService.getLogByTenant(logTenant);
+
+        // Convert logs to DTOs
+        List<LogDTO> logDTOs = logs.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(logDTOs);
+    }
+
+
+
+    /**
+     * Create a new log
+     * @param logDTO The log to create
+     * @param authorizationHeader The authorization header
+     * @return The created log
+     */
+    @PostMapping
+    public ResponseEntity<LogDTO> createLog(
+            @RequestBody LogDTO logDTO,
+            @RequestHeader("Authorization") String authorizationHeader) {
+        
+        // Get the authenticated user
+        UserResponseDTO user = authService.getAuthenticatedUser(authorizationHeader);
+        logger.info("Creating log, requested by: {}", user.getEmail());
+        
+        // Set the tenant from the authenticated user (as fallback if project lookup fails)
+        logDTO.setTenant(user.getTenant());
+        
+        // Set the user email
+        logDTO.setUserEmail(user.getEmail());
+        
+        // Create the log
+        Log createdLog = logService.createLogFromDTO(logDTO, authorizationHeader);
+        
+        return ResponseEntity.ok(convertToDTO(createdLog));
+    }
+
+    /**
      * Convert a Log entity to a LogDTO
      * @param log The log entity
      * @return The log DTO
@@ -87,6 +142,7 @@ public class LogController {
         logDTO.setErrorCode(log.getErrorCode());
         logDTO.setCustomMessage(log.getCustomMessage());
         logDTO.setSeverity(log.getSeverity());
+        logDTO.setTenant(log.getTenant());
         logDTO.setProjectId(log.getProjectId());
         return logDTO;
     }
