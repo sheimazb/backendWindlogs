@@ -1,5 +1,6 @@
 package com.windlogs.tickets.feign;
 
+import com.windlogs.tickets.dto.ProjectResponseDTO;
 import com.windlogs.tickets.dto.UserResponseDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,4 +15,7 @@ public interface AuthenticationFeignClient {
     
     @GetMapping("/api/v1/auth/users/{userId}")
     UserResponseDTO getUserById(@PathVariable("userId") Long userId, @RequestHeader("Authorization") String token);
+    
+    @GetMapping("/api/v1/projects/{projectId}")
+    ProjectResponseDTO getProjectById(@PathVariable("projectId") Long projectId, @RequestHeader("Authorization") String token);
 }
