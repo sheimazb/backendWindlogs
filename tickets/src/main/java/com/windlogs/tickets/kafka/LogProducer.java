@@ -24,8 +24,8 @@ public class LogProducer {
      * @param logEvent The log event to send
      */
     public void sendLogEvent(LogEvent logEvent) {
-        log.info("Sending log event to Kafka: logId={}, type={}, severity={}, tenant={}", 
-                logEvent.logId(), logEvent.type(), logEvent.severity(), logEvent.tenant());
+        log.info("Sending log event to Kafka: time={}, level={}, source={}, container={}", 
+                logEvent.time(), logEvent.level(), logEvent.source(), logEvent.container_name());
         
         Message<LogEvent> message = MessageBuilder
                 .withPayload(logEvent)

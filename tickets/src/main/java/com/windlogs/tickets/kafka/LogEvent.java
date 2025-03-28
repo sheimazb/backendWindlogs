@@ -1,22 +1,17 @@
 package com.windlogs.tickets.kafka;
 
-import com.windlogs.tickets.enums.LogSeverity;
-import com.windlogs.tickets.enums.LogType;
-
-import java.time.LocalDateTime;
-
 /**
- * Event sent to Kafka when a log is created or updated
+ * Event record matching Fluentd log format
  */
 public record LogEvent(
-        Long logId,
-        LogType type,
-        LogSeverity severity,
-        String description,
-        String source,
-        String tenant,
-        Long projectId,
-        LocalDateTime timestamp,
-        String userEmail
-) {
-} 
+    String time,
+    String level,
+    String pid,
+    String thread,
+    String class_name,
+    String message,
+    String source,
+    String container_id,
+    String container_name,
+    double timestamp
+) {} 

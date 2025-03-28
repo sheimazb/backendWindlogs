@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.time.ZoneId;
 
 @Service
 public class LogService {
@@ -75,31 +76,67 @@ public class LogService {
     }
     
     /**
+     * Find a project ID by tag (public endpoint - no auth required)
+     * @param tag The tag to search for
+     * @return The project ID if found
+     */
+    public Optional<Long> findProjectIdByTagPublic(String tag) {
+        logger.info("Finding project ID for tag: {}", tag);
+        
+        if (tag == null || tag.isEmpty()) {
+            logger.warn("Empty tag provided, returning empty result");
+            return Optional.empty();
+        }
+        
+        try {
+            // Use the public endpoint to find a project by primary tag
+            return projectService.findProjectByPrimaryTag(tag, "")
+                    .map(ProjectResponseDTO::getId);
+        } catch (Exception e) {
+            logger.error("Error finding project with tag {}: {}", tag, e.getMessage());
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * Find a project by tag (public endpoint - no auth required)
+     * @param tag The tag to search for
+     * @return The complete project if found
+     */
+    public Optional<ProjectResponseDTO> findProjectByTagPublic(String tag) {
+        logger.info("Finding complete project for tag: {}", tag);
+        
+        if (tag == null || tag.isEmpty()) {
+            logger.warn("Empty tag provided, returning empty result");
+            return Optional.empty();
+        }
+        
+        try {
+            // Use the public endpoint to find a project by primary tag
+            return projectService.findProjectByPrimaryTag(tag, "");
+        } catch (Exception e) {
+            logger.error("Error finding project with tag {}: {}", tag, e.getMessage());
+            return Optional.empty();
+        }
+    }
+    
+     
+    /**
      * Create a new log from DTO
      * @param logDTO The log DTO to create
-     * @param authorizationHeader The authorization header
+     * @param authorizationHeader The authorization header (can be null for simplified version)
      * @return The created log
      */
     public Log createLogFromDTO(LogDTO logDTO, String authorizationHeader) {
         logger.info("Creating log from DTO with type: {}, severity: {}, tenant: {}", 
             logDTO.getType(), logDTO.getSeverity(), logDTO.getTenant());
         
-        // get the tenant from the project
-        if (logDTO.getProjectId() != null) {
-            try {
-                ProjectResponseDTO project = projectService.getProjectById(logDTO.getProjectId(), authorizationHeader);
-                logDTO.setTenant(project.getTenant());
-                logger.info("Set tenant from project: {}", project.getTenant());
-            } catch (Exception e) {
-                logger.error("Error getting project tenant: {}", e.getMessage());
-               
-            }
-        }
+        // Skip project tenant lookup for simplicity
         
-        // Validate tenant
+        // Use default tenant if not provided
         if (logDTO.getTenant() == null || logDTO.getTenant().isEmpty()) {
-            logger.error("Attempt to create log with null or empty tenant");
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tenant must be specified when creating a log");
+            logDTO.setTenant("default");
+            logger.info("Using default tenant");
         }
         
         Log log = new Log();
@@ -113,10 +150,18 @@ public class LogService {
         log.setTenant(logDTO.getTenant());
         log.setProjectId(logDTO.getProjectId());
         
-        Log savedLog = logRepository.save(log);
+        // Set new Fluentd fields if they exist
+        log.setPid(logDTO.getPid());
+        log.setThread(logDTO.getThread());
+        log.setClassName(logDTO.getClassName());
+        log.setContainerId(logDTO.getContainerId());
+        log.setContainerName(logDTO.getContainerName());
+        log.setOriginalTimestamp(logDTO.getOriginalTimestamp());
         
-        // Send Kafka event for the new log
-        sendLogCreatedEvent(savedLog, logDTO.getUserEmail());
+        Log savedLog = logRepository.save(log);
+        logger.info("Saved log with ID: {}", savedLog.getId());
+        
+        // Skip Kafka event for simplicity
         
         return savedLog;
     }
@@ -128,16 +173,29 @@ public class LogService {
      */
     private void sendLogCreatedEvent(Log log, String userEmail) {
         try {
+            // Convert LocalDateTime to Unix timestamp
+            double timestamp = log.getOriginalTimestamp() != null 
+                ? log.getOriginalTimestamp() 
+                : log.getTimestamp().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() / 1000.0;
+
+            // Get values with fallbacks for null fields
+            String pid = log.getPid() != null ? log.getPid() : "1";
+            String thread = log.getThread() != null ? log.getThread() : log.getErrorCode();
+            String className = log.getClassName() != null ? log.getClassName() : log.getSource();
+            String containerId = log.getContainerId() != null ? log.getContainerId() : "";
+            String containerName = log.getContainerName() != null ? log.getContainerName() : "default_container";
+
             LogEvent logEvent = new LogEvent(
-                log.getId(),
-                log.getType(),
-                log.getSeverity(),
-                log.getDescription(),
-                log.getSource(),
-                log.getTenant(),
-                log.getProjectId(),
-                log.getTimestamp(),
-                userEmail
+                log.getTimestamp().toString(), // time
+                log.getType().toString(),      // level
+                pid,                           // pid
+                thread,                        // thread
+                className,                     // class_name
+                log.getCustomMessage(),        // message
+                log.getSource(),               // source
+                containerId,                   // container_id
+                containerName,                 // container_name
+                timestamp                      // timestamp
             );
             
             logProducer.sendLogEvent(logEvent);

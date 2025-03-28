@@ -45,6 +45,49 @@ public class Log {
 
     @Column(name = "project_id")
     private Long projectId;
+    
+    // New fields to match Fluentd format
+    
+    /**
+     * Process ID from the log
+     */
+    private String pid;
+    
+    /**
+     * Thread name from the log
+     */
+    private String thread;
+    
+    /**
+     * Class name that generated the log
+     */
+    @Column(name = "class_name")
+    private String className;
+    
+    /**
+     * Container ID where the log was generated
+     */
+    @Column(name = "container_id")
+    private String containerId;
+    
+    /**
+     * Container name where the log was generated
+     */
+    @Column(name = "container_name")
+    private String containerName;
+    
+    /**
+     * Original timestamp value from Fluentd
+     */
+    @Column(name = "original_timestamp")
+    private Double originalTimestamp;
+
+    /**
+     * Tag project
+     */
+
+    @Column(name="tag")
+    private String tag;
 
     @OneToMany(mappedBy = "log", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Ticket> tickets = new ArrayList<>();
