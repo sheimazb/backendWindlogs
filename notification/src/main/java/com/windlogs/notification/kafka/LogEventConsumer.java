@@ -24,18 +24,24 @@ public class LogEventConsumer {
 
     /**
      * Listen for log events from Kafka
-     * @param logEvent The log event
+     * @param ticketsLogEvent The log event
      */
     @KafkaListener(
         topics = "log-events-topic", 
         groupId = "notification-group",
         containerFactory = "kafkaListenerContainerFactory"
     )
-    public void consumeLogEvent(LogEvent logEvent) {
-        log.info("Received log event: logId={}, type={}, severity={}, tenant={}, projectId={}", 
-                logEvent.logId(), logEvent.type(), logEvent.severity(), logEvent.tenant(), logEvent.projectId());
+    public void consumeLogEvent(TicketsLogEvent ticketsLogEvent) {
+        log.info("Received raw log event data: level={}, message={}, container={}", 
+                ticketsLogEvent.getLevel(), ticketsLogEvent.getMessage(), ticketsLogEvent.getContainer_name());
         
         try {
+            // Convert to our internal LogEvent format
+            LogEvent logEvent = ticketsLogEvent.toLogEvent();
+            
+            log.info("Converted to LogEvent: logId={}, type={}, severity={}, tenant={}", 
+                    logEvent.logId(), logEvent.type(), logEvent.severity(), logEvent.tenant());
+            
             // Get managers with the same tenant
             log.info("Getting managers for tenant: {}", logEvent.tenant());
             List<String> managerEmails = userService.getUserEmailsByTenant(logEvent.tenant());
