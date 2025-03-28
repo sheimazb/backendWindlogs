@@ -291,4 +291,22 @@ public class AuthenticationService {
         tokenRepository.save(token);
     }
 
+    public User validateAdminToken(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authorization header");
+        }
+
+        String token = authorizationHeader.substring(7);
+        String userEmail = jwtService.extractUsername(token);
+        
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        
+        if (user.getRole() != Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can create service accounts");
+        }
+        
+        return user;
+    }
+
 }

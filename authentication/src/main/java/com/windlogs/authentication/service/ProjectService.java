@@ -70,6 +70,9 @@ public class ProjectService {
             if (updatedProject.getRepositoryLink() != null) {
                 existingProject.setRepositoryLink(updatedProject.getRepositoryLink());
             }
+            if (updatedProject.getPrimaryTag() != null) {
+                existingProject.setPrimaryTag(updatedProject.getPrimaryTag());
+            }
             Optional.ofNullable(updatedProject.getProgressPercentage()).ifPresent(existingProject::setProgressPercentage);
             if (updatedProject.getDeadlineDate() != null) {
                 existingProject.setDeadlineDate(updatedProject.getDeadlineDate());
@@ -105,6 +108,12 @@ public class ProjectService {
     public List<Project> findProjectsByTagAndTenant(String tag, String tenant) {
         logger.info("Searching projects with tag: {} for tenant: {}", tag, tenant);
         return projectRepository.findByTagsContainingAndTenant(tag, tenant);
+    }
+
+    // Find projects by primary tag
+    public List<Project> findProjectsByPrimaryTag(String primaryTag) {
+        logger.info("Searching projects with primary tag: {}", primaryTag);
+        return projectRepository.findByPrimaryTag(primaryTag);
     }
 
     // Add a user to a project

@@ -17,8 +17,10 @@ import org.springframework.web.server.ResponseStatusException;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.HashMap;
 
 import com.windlogs.authentication.repository.UserRepository;
+import com.windlogs.authentication.security.JwtService;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -30,6 +32,7 @@ public class AuthenticationController {
     private final AuthenticationService authenticationService;
     private final SecureRandom secureRandom = new SecureRandom();
     private final UserRepository userRepository;
+    private final JwtService jwtService;
 
     /**
      * This is the controller for the Partner role to register
@@ -223,5 +226,31 @@ public class AuthenticationController {
             logger.error("Error getting users by tenant and role", e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    @PostMapping("/service-account")
+    public ResponseEntity<AuthenticationResponse> createServiceToken(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestParam String serviceName,
+            @RequestParam String tenant) {
+        logger.info("Service account token request for service: {}, tenant: {}", serviceName, tenant);
+        
+        // Get the authenticated admin user
+        User admin = (User) authenticationService.validateAdminToken(authorizationHeader);
+        
+        // Generate service account token
+        var claims = new HashMap<String, Object>();
+        claims.put("type", "SERVICE_ACCOUNT");
+        claims.put("serviceName", serviceName);
+        claims.put("tenant", tenant);
+        claims.put("role", "SERVICE");
+        
+        String token = jwtService.generateServiceToken(claims);
+        
+        return ResponseEntity.ok(AuthenticationResponse.builder()
+                .token(token)
+                .role("SERVICE")
+                .tenant(tenant)
+                .build());
     }
 }
