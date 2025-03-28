@@ -193,6 +193,20 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.findProjectsByTagAndTenant(tag, user.getTenant()));
     }
 
+    @GetMapping("/search/by-primary-tag")
+    public ResponseEntity<List<Project>> findProjectsByPrimaryTag(
+            @RequestHeader("X-Primary-Tag") String primaryTag) {
+        logger.info("Searching for projects with primary tag: {}", primaryTag);
+        return ResponseEntity.ok(projectService.findProjectsByPrimaryTag(primaryTag));
+    }
+
+    @GetMapping("/public/by-tag/{tag}")
+    public ResponseEntity<List<Project>> findProjectsByPrimaryTagPublic(
+            @PathVariable String tag) {
+        logger.info("Public API - Searching for projects with primary tag: {}", tag);
+        return ResponseEntity.ok(projectService.findProjectsByPrimaryTag(tag));
+    }
+
     @PostMapping("/{projectId}/users/{userId}")
     public ResponseEntity<Project> addUserToProject(
             @PathVariable Long projectId,

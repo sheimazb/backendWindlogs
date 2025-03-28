@@ -22,6 +22,7 @@ public class ProjectResponse {
     private LocalDateTime deadlineAlert;
     private int membersCount;
     private String tags;
+    private String primaryTag;
     private String documentationLink;
     private boolean isPayed;
     private LocalDateTime createdDate;

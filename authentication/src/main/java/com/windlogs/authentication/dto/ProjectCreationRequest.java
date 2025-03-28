@@ -18,6 +18,7 @@ public class ProjectCreationRequest {
     private String technologies;
     private String repositoryLink;
     private String tags;
+    private String tag ;
     private String documentationLink;
     private LocalDateTime deadlineAlert;
 }

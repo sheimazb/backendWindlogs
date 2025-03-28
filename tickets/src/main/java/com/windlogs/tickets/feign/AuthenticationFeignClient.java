@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 
+import java.util.List;
+
 @FeignClient(name = "authentication-service", url = "${authentication.service.url:http://localhost:8088}", configuration = FeignConfig.class, fallback = AuthenticationFeignFallback.class)
 public interface AuthenticationFeignClient {
 
@@ -18,4 +20,10 @@ public interface AuthenticationFeignClient {
     
     @GetMapping("/api/v1/projects/{projectId}")
     ProjectResponseDTO getProjectById(@PathVariable("projectId") Long projectId, @RequestHeader("Authorization") String token);
+    
+    @GetMapping("/api/v1/projects")
+    List<ProjectResponseDTO> getAllProjects(@RequestHeader("Authorization") String token);
+    
+    @GetMapping("/api/v1/projects/public/by-tag/{tag}")
+    List<ProjectResponseDTO> findProjectsByPrimaryTagPublic(@PathVariable("tag") String tag);
 }

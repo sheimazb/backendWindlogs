@@ -6,6 +6,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+
 /**
  * Service for project-related operations
  */
@@ -32,6 +36,46 @@ public class ProjectService {
         } catch (Exception e) {
             logger.error("Error getting project with ID {}: {}", projectId, e.getMessage());
             throw new RuntimeException("Failed to get project by ID", e);
+        }
+    }
+    
+    /**
+     * Get all projects
+     * @param authorizationHeader The authorization header
+     * @return List of all projects
+     */
+    public List<ProjectResponseDTO> getAllProjects(String authorizationHeader) {
+        logger.info("Getting all projects");
+        
+        try {
+            return authenticationFeignClient.getAllProjects(authorizationHeader);
+        } catch (Exception e) {
+            logger.error("Error getting all projects: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+    
+    /**
+     * Find project by tag
+     * @param tag The tag to search for
+     * @param authorizationHeader The authorization header
+     * @return The project if found, or null if not found
+     */
+    public Optional<ProjectResponseDTO> findProjectByPrimaryTag(String tag, String authorizationHeader) {
+        logger.info("Finding project with tag: {}", tag);
+        
+        if (tag == null || tag.isEmpty()) {
+            logger.warn("Empty tag provided, returning empty result");
+            return Optional.empty();
+        }
+        
+        try {
+            // Only use the public endpoint
+            List<ProjectResponseDTO> projects = authenticationFeignClient.findProjectsByPrimaryTagPublic(tag);
+            return projects.stream().findFirst();
+        } catch (Exception e) {
+            logger.error("Error finding project with tag {}: {}", tag, e.getMessage());
+            return Optional.empty();
         }
     }
 } 

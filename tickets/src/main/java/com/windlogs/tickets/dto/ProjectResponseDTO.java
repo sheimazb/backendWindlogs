@@ -20,6 +20,7 @@ public class ProjectResponseDTO {
     private String description;
     private String technologies;
     private String repositoryLink;
+    private String primaryTag;
     private float progressPercentage;
     private LocalDate deadlineDate;
     private Integer membersCount;
