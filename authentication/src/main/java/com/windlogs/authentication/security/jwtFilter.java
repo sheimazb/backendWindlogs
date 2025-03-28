@@ -41,6 +41,15 @@ public class jwtFilter extends OncePerRequestFilter {
             "/api/v1/auth/verify-and-change-password"
     );
 
+    // Update filter to also check for paths that start with public URLs
+    private boolean isPublicPath(String path) {
+        if (PUBLIC_PATHS.stream().anyMatch(path::equals)) {
+            return true;
+        }
+        // Check if the path starts with the public project endpoint
+        return path.startsWith("/api/v1/projects/public/");
+    }
+
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
@@ -52,7 +61,7 @@ public class jwtFilter extends OncePerRequestFilter {
             logger.debug("Processing request for path: {}", path);
 
             // Skip authentication for public paths
-            if (PUBLIC_PATHS.stream().anyMatch(path::equals)) {
+            if (isPublicPath(path)) {
                 logger.debug("Skipping authentication for public path: {}", path);
                 filterChain.doFilter(request, response);
                 return;

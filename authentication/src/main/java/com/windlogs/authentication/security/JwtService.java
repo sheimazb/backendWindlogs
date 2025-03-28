@@ -24,6 +24,8 @@ public class JwtService {
     private long jwtExpiration;
     @Value("${application.security.jwt.secret-key}")
     private String secretKey;
+    @Value("${application.security.jwt.service-token-expiration:2592000000}") // 30 days in milliseconds
+    private long serviceTokenExpiration;
 
     public String extractUsername(String token){
         return extractClaim(token, Claims::getSubject);
@@ -94,5 +96,16 @@ public class JwtService {
     private Key getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    public String generateServiceToken(Map<String, Object> claims) {
+        return Jwts
+                .builder()
+                .setClaims(claims)
+                .setSubject("service-account")
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + serviceTokenExpiration))
+                .signWith(getSignInKey())
+                .compact();
     }
 }

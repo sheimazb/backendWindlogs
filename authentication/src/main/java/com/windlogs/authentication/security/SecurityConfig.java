@@ -12,7 +12,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.logout.LogoutHandler;
-import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.http.HttpMethod;
 
 import static org.springframework.security.config.http.SessionCreationPolicy.STATELESS;
@@ -25,12 +24,13 @@ public class SecurityConfig {
 
     private final jwtFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
-    private final CorsConfigurationSource corsConfigurationSource;
     private final LogoutHandler logoutHandler;
+    
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                // Simply enable CORS with default configuration - will use Spring MVC's CORS
+                .cors(cors -> cors.configure(http))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(req -> req
                         .requestMatchers(
@@ -40,7 +40,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/forgot_password",
                                 "/api/v1/auth/reset_password",
                                 "/api/v1/auth/request-password-change",
-                                "/api/v1/auth/verify-and-change-password"
+                                "/api/v1/auth/verify-and-change-password",
+                                "/api/v1/projects/public/by-tag/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/employees/create-staff").hasAuthority("CREATE_STAFF")
                         .requestMatchers("/api/v1/employees/my-staff",
@@ -71,5 +72,4 @@ public class SecurityConfig {
 
         return http.build();
     }
-
 }
