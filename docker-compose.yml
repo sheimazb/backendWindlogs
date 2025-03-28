@@ -39,57 +39,8 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
     networks:
       - microservices-net
-  fluentd:
-    build: ./fluentd
-    container_name: fluentd
-    volumes:
-      - ./fluentd/conf:/fluentd/etc
-    environment:
-      - FLUENTD_CONF=fluent.conf
-    ports:
-      - "24226:24224"
-      - "24226:24224/udp"
-    depends_on:
-      - elasticsearch
-    networks:
-      - app-network
-      - elk-network
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
-    container_name: elasticsearch
-    environment:
-      - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - xpack.security.enabled=false
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    ports:
-      - "9200:9200"
-    volumes:
-      - elasticsearch-data:/usr/share/elasticsearch/data
-    networks:
-      - elk-network
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.1
-    container_name: kibana
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    ports:
-      - "5601:5601"
-    depends_on:
-      - elasticsearch
-    networks:
-      - elk-network
-
-
 
 networks:
   microservices-net:
     driver: bridge
-  elk-network:
-    driver: bridge
-volumes:
-  elasticsearch-data:
-    driver: local
+
