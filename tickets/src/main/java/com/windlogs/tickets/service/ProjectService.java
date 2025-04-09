@@ -1,6 +1,7 @@
 package com.windlogs.tickets.service;
 
 import com.windlogs.tickets.dto.ProjectResponseDTO;
+import com.windlogs.tickets.dto.UserResponseDTO;
 import com.windlogs.tickets.feign.AuthenticationFeignClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Service for project-related operations
@@ -76,6 +78,21 @@ public class ProjectService {
         } catch (Exception e) {
             logger.error("Error finding project with tag {}: {}", tag, e.getMessage());
             return Optional.empty();
+        }
+    }
+
+    /**
+     * Find project's members
+     * @param projectId The project ID
+     * @return List of users for the project, or empty list if error occurs
+     */
+    public List<UserResponseDTO> getProjectUsers(Long projectId) {
+        logger.info("Finding users of project id: {}", projectId);
+        try {
+            return authenticationFeignClient.getProjectMembers(projectId);
+        } catch (Exception e) {
+            logger.error("Error getting project members for project ID {}: {}", projectId, e.getMessage(), e);
+            return Collections.emptyList();
         }
     }
 } 

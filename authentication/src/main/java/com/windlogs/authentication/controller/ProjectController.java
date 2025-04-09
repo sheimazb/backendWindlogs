@@ -349,6 +349,13 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.getProjectUsers(projectId));
     }
 
+    //without authorization
+    @GetMapping("/public/{projectId}/members")
+    public ResponseEntity<Set<User>> getProjectMembers(
+            @PathVariable Long projectId) {
+        return ResponseEntity.ok(projectService.getProjectUsers(projectId));
+    }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<Set<Project>> getUserProjects(
             @PathVariable Long userId,
