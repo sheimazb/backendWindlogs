@@ -39,10 +39,14 @@ public class FeignErrorDecoder implements ErrorDecoder {
     }
 
     private String getResponseBody(Response response) {
+        if (response.body() == null) {
+            return "No response body available";
+        }
+        
         try (InputStream bodyIs = response.body().asInputStream()) {
             byte[] bodyBytes = bodyIs.readAllBytes();
             return new String(bodyBytes, StandardCharsets.UTF_8);
-        } catch (IOException e) {
+        } catch (IOException | NullPointerException e) {
             logger.error("Error reading response body", e);
             return "Error reading response body";
         }
