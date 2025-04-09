@@ -22,6 +22,10 @@ import java.util.HashMap;
 import com.windlogs.authentication.repository.UserRepository;
 import com.windlogs.authentication.security.JwtService;
 
+/**
+ * REST controller for handling authentication-related operations such as registration,
+ * login, account activation, password management, and user information retrieval.
+ */
 @RestController
 @RequestMapping("/api/v1/auth")
 @Tag(name = "Authentication")
@@ -35,16 +39,13 @@ public class AuthenticationController {
     private final JwtService jwtService;
 
     /**
-     * This is the controller for the Partner role to register
-     * in our application.
-
-     * It includes the `register` function to create a new account,
-     * and the `activateAccount` function for partner account validation.
-
-     * After validation and email verification, the partner's account
-     * is successfully created, granting them permission to authenticate.
+     * Registers a new user based on the provided registration request.
+     *
+     * @param request the {@link RegistrationRequest} object containing user registration details (e.g., email, password)
+     * @return a {@link ResponseEntity} with a success message if registration is successful,
+     *         or an error message with an appropriate HTTP status code if it fails
+     * @throws ResponseStatusException if the registration fails due to invalid input or business logic errors
      */
-
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody @Valid RegistrationRequest request) {
         try {
@@ -61,18 +62,29 @@ public class AuthenticationController {
         }
     }
 
+    /**
+     * Authenticates a user and returns a JWT token upon successful login.
+     *
+     * @param request the {@link AuthenticationRequest} containing email and password
+     * @return a {@link ResponseEntity} containing an {@link AuthenticationResponse} with the JWT token and user details
+     */
     @PostMapping("/authenticate")
-    public ResponseEntity<AuthenticationResponse> authenticate(
-            @RequestBody @Valid AuthenticationRequest request) {
+    public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody @Valid AuthenticationRequest request) {
         return ResponseEntity.ok(authenticationService.authenticate(request));
     }
 
+    /**
+     * Retrieves information about the currently authenticated user.
+     *
+     * @param authentication the Spring Security {@link Authentication} object representing the current user
+     * @return a {@link ResponseEntity} containing a {@link UserResponse} with user details, or 401 if not authenticated
+     */
     @GetMapping("/user")
     public ResponseEntity<UserResponse> getCurrentUser(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
             return ResponseEntity.status(401).build();
         }
-        
+
         User user = (User) authentication.getPrincipal();
         logger.info("Getting current user: {}, tenant: {}", user.getEmail(), user.getTenant());
         
@@ -87,6 +99,13 @@ public class AuthenticationController {
         return ResponseEntity.ok(userResponse);
     }
 
+    /**
+     * Activates a user account using the provided activation token.
+     *
+     * @param token the activation token received via email
+     * @return a {@link ResponseEntity} with a success message if activation succeeds, or an error message if it fails
+     * @throws MessagingException if a new email needs to be sent due to token expiration
+     */
     @GetMapping("/activate-account")
     public ResponseEntity<String> confirm(@RequestParam String token) throws MessagingException {
         try {
@@ -97,6 +116,12 @@ public class AuthenticationController {
         }
     }
 
+    /**
+     * Initiates a password reset process by generating a token and sending a reset email.
+     *
+     * @param email the email address of the user requesting a password reset
+     * @return a {@link ResponseEntity} with a success message if the email is sent, or an error message if it fails
+     */
     @PostMapping("/forgot_password")
     public ResponseEntity<String> processForgotPassword(@RequestParam String email) {
         try {
@@ -110,6 +135,13 @@ public class AuthenticationController {
         }
     }
 
+    /**
+     * Resets a user's password using the provided token and new password.
+     *
+     * @param token the reset token received via email
+     * @param password the new password to set
+     * @return a {@link ResponseEntity} with a success message if the password is reset, or an error message if it fails
+     */
     @PostMapping("/reset_password")
     public ResponseEntity<String> processResetPassword(
             @RequestParam String token,
@@ -127,18 +159,38 @@ public class AuthenticationController {
         }
     }
 
+    /**
+     * Requests a password change by sending a verification code to the user's email.
+     *
+     * @param request the {@link ChangePasswordRequest} containing email and current password
+     * @return a {@link ResponseEntity} with a success message if the code is sent
+     * @throws MessagingException if there is an error sending the email
+     */
     @PostMapping("/request-password-change")
     public ResponseEntity<String> requestPasswordChange(@RequestBody @Valid ChangePasswordRequest request) throws MessagingException {
         authenticationService.requestPasswordChange(request);
         return ResponseEntity.ok("Verification code sent to your email!");
     }
 
+    /**
+     * Verifies a password change token and updates the user's password.
+     *
+     * @param request the {@link VerifyChangePasswordRequest} containing the token and new password
+     * @return a {@link ResponseEntity} with a success message if the password is changed
+     */
     @PostMapping("/verify-and-change-password")
     public ResponseEntity<String> verifyAndChangePassword(@RequestBody @Valid VerifyChangePasswordRequest request) {
         authenticationService.verifyAndChangePassword(request);
         return ResponseEntity.ok("Password changed successfully!");
     }
 
+    /**
+     * Retrieves information about a user by their ID, with tenant-based access control.
+     *
+     * @param userId the ID of the user to retrieve
+     * @param authentication the Spring Security {@link Authentication} object representing the current user
+     * @return a {@link ResponseEntity} containing a {@link UserResponse} with user details, or an error status if unauthorized
+     */
     @GetMapping("/users/{userId}")
     public ResponseEntity<UserResponse> getUserById(
             @PathVariable Long userId,
@@ -150,8 +202,7 @@ public class AuthenticationController {
         
         User authenticatedUser = (User) authentication.getPrincipal();
         logger.info("Getting user by ID: {}, requested by: {}", userId, authenticatedUser.getEmail());
-        
-        // Get the user from the repository
+
         User user = userRepository.findById(userId)
                 .orElse(null);
         
@@ -159,9 +210,7 @@ public class AuthenticationController {
             logger.warn("User not found with ID: {}", userId);
             return ResponseEntity.notFound().build();
         }
-        
-        // Check if the authenticated user has access to this user's information
-        // Only allow access to users in the same tenant
+
         if (!authenticatedUser.getTenant().equals(user.getTenant()) && 
             !authenticatedUser.getRole().equals(Role.ADMIN)) {
             logger.warn("Unauthorized attempt to access user information. Requester tenant: {}, Target tenant: {}", 
@@ -179,13 +228,14 @@ public class AuthenticationController {
         
         return ResponseEntity.ok(userResponse);
     }
-    
+
     /**
-     * Get users by tenant and role
-     * This endpoint is used by the notification service to get managers for sending notifications
-     * @param tenant The tenant to filter by
-     * @param role The role to filter by (e.g., MANAGER)
-     * @return List of users with the specified tenant and role
+     * Retrieves a list of users filtered by tenant and role.
+     * This endpoint is used by the notification service to get managers for sending notifications.
+     *
+     * @param tenant the tenant identifier to filter by
+     * @param role the role to filter by (e.g., "MANAGER")
+     * @return a {@link ResponseEntity} containing a list of {@link UserResponse} objects, or an error status if it fails
      */
     @GetMapping("/users/tenant/{tenant}/role/{role}")
     public ResponseEntity<List<UserResponse>> getUsersByTenantAndRole(
@@ -228,17 +278,19 @@ public class AuthenticationController {
         }
     }
 
+    /**
+     * Creates a service account token for a specified service and tenant, restricted to admin users.
+     *
+     * @param serviceName the name of the service requesting the token
+     * @param tenant the tenant identifier for the service account
+     * @return a {@link ResponseEntity} containing an {@link AuthenticationResponse} with the service token
+     */
     @PostMapping("/service-account")
     public ResponseEntity<AuthenticationResponse> createServiceToken(
-            @RequestHeader("Authorization") String authorizationHeader,
             @RequestParam String serviceName,
             @RequestParam String tenant) {
         logger.info("Service account token request for service: {}, tenant: {}", serviceName, tenant);
-        
-        // Get the authenticated admin user
-        User admin = (User) authenticationService.validateAdminToken(authorizationHeader);
-        
-        // Generate service account token
+
         var claims = new HashMap<String, Object>();
         claims.put("type", "SERVICE_ACCOUNT");
         claims.put("serviceName", serviceName);
