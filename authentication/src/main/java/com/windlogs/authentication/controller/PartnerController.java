@@ -15,11 +15,16 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * REST controller for handling staff's accounts,
+ * create staff account, get staff by partner tenant, get staff by id.
+ */
 @RestController
 @RequestMapping("/api/v1/employees")
 @Tag(name = "Employee Management")
 @RequiredArgsConstructor
 public class PartnerController {
+
     private static final Logger logger = LoggerFactory.getLogger(PartnerController.class);
 
     private final PartnerService partnerService;
