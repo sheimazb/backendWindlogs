@@ -1,12 +1,13 @@
 package com.windlogs.tickets.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.windlogs.tickets.dto.LogDTO;
-import com.windlogs.tickets.dto.UserResponseDTO;
+import com.windlogs.tickets.dto.*;
 import com.windlogs.tickets.entity.Log;
 import com.windlogs.tickets.repository.LogRepository;
 import com.windlogs.tickets.service.AuthService;
 import com.windlogs.tickets.service.LogService;
+import com.windlogs.tickets.service.ProjectService;
+import com.windlogs.tickets.service.TicketService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +18,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import com.windlogs.tickets.dto.FluentdLogRequest;
+
 import com.windlogs.tickets.enums.LogSeverity;
 import com.windlogs.tickets.enums.LogType;
 
@@ -29,12 +30,16 @@ public class LogController {
     private final AuthService authService;
     private final LogRepository logRepository;
     private final ObjectMapper objectMapper;
+    private final TicketService ticketService;
+    private final ProjectService projectService;
 
-    public LogController(LogService logService, AuthService authService, LogRepository logRepository, ObjectMapper objectMapper) {
+    public LogController(LogService logService, TicketService ticketService, AuthService authService, LogRepository logRepository, ObjectMapper objectMapper, ProjectService projectService) {
         this.logService = logService;
         this.authService = authService;
         this.logRepository = logRepository;
         this.objectMapper = objectMapper;
+        this.ticketService = ticketService;
+        this.projectService = projectService;
     }
 
     /**
@@ -121,23 +126,18 @@ public class LogController {
     )
     public ResponseEntity<?> receiveFluentdLog(@RequestBody String rawJsonBody) {
         try {
-            // Log the raw request for debugging
             logger.debug("Received log from Fluentd: {}", rawJsonBody);
 
-            // Parse the JSON to our DTO
             FluentdLogRequest fluentdLog = objectMapper.readValue(rawJsonBody, FluentdLogRequest.class);
-
-            // Create a new log entity
             Log log = new Log();
 
-            // Set timestamp (use current time as fallback)
+            // Set timestamp
             if (fluentdLog.getTimestamp() != 0) {
                 try {
                     log.setTimestamp(LocalDateTime.ofInstant(
                             Instant.ofEpochSecond(fluentdLog.getTimestamp()),
                             ZoneId.systemDefault()
                     ));
-                    // Store original timestamp for reference
                     log.setOriginalTimestamp((double) fluentdLog.getTimestamp());
                 } catch (Exception e) {
                     logger.warn("Failed to parse timestamp: {}, using current time", fluentdLog.getTimestamp());
@@ -149,89 +149,99 @@ public class LogController {
                 log.setOriginalTimestamp((double) System.currentTimeMillis() / 1000);
             }
 
-            // Set log type with safe conversion
             log.setType(determineLogType(fluentdLog.getLevel()));
-
-            // Set required text fields with null checks
             log.setDescription(fluentdLog.getMessage() != null ? fluentdLog.getMessage() : "No message");
             log.setCustomMessage(fluentdLog.getMessage() != null ? fluentdLog.getMessage() : "No message");
             log.setSource(fluentdLog.getSource() != null ? fluentdLog.getSource() : "fluentd");
-
-            // Set severity based on log level
             log.setSeverity(determineLogSeverity(fluentdLog.getLevel()));
 
-            // Extract tenant from container name, default to 'default'
             String containerTenant = extractTenant(fluentdLog.getContainer_name());
-            log.setTenant(containerTenant); // Initial value
+            log.setTenant(containerTenant);
 
-            // Set tag value
             String logTag = fluentdLog.getTag() != null ? fluentdLog.getTag() : "";
             log.setTag(logTag);
-            
-            // Find matching project by tag and set project ID
+
             if (logTag != null && !logTag.isEmpty()) {
                 try {
-                    // Match tag with a project's primaryTag and get project details
                     logService.findProjectByTagPublic(logTag)
-                        .ifPresentOrElse(
-                            project -> {
-                                log.setProjectId(project.getId());
-                                
-                                // Use project tenant instead of container tenant
-                                if (project.getTenant() != null && !project.getTenant().isEmpty()) {
-                                    log.setTenant(project.getTenant());
-                                    logger.info("Using project tenant: {} for log", project.getTenant());
-                                }
-                                
-                                logger.info("Matched log with tag {} to project {} (tenant: {})", 
-                                    logTag, project.getId(), project.getTenant());
-                            },
-                            () -> {
-                                log.setProjectId(1L); // Default project ID if no match found
-                                logger.info("No project found with tag {}, using default project ID and container tenant: {}", 
-                                    logTag, containerTenant);
-                            }
-                        );
+                            .ifPresentOrElse(
+                                    project -> {
+                                        log.setProjectId(project.getId());
+                                        if (project.getTenant() != null && !project.getTenant().isEmpty()) {
+                                            log.setTenant(project.getTenant());
+                                            logger.info("Using project tenant: {} for log", project.getTenant());
+                                        }
+                                        logger.info("Matched log with tag {} to project {} (tenant: {})",
+                                                logTag, project.getId(), project.getTenant());
+                                    },
+                                    () -> {
+                                        log.setProjectId(1L);
+                                        logger.info("No project found with tag {}, using default project ID and container tenant: {}",
+                                                logTag, containerTenant);
+                                    }
+                            );
                 } catch (Exception e) {
                     logger.error("Error finding project by tag: {}", e.getMessage());
-                    log.setProjectId(1L); // Default project ID on error
+                    log.setProjectId(1L);
                 }
             } else {
-                // Default project ID if no tag
                 log.setProjectId(1L);
             }
 
-            // Create a unique error code
             log.setErrorCode("FL_" + System.currentTimeMillis());
-
-            // Set Fluentd-specific metadata
             log.setPid(fluentdLog.getPid());
             log.setThread(fluentdLog.getThread());
             log.setClassName(fluentdLog.getClass_name());
             log.setContainerId(fluentdLog.getContainer_id());
             log.setContainerName(fluentdLog.getContainer_name());
 
-            // Save to database
             Log savedLog = logRepository.save(log);
             logger.info("Successfully saved log with ID: {}", savedLog.getId());
+
+            TicketDTO ticketDTO = new TicketDTO();
+
+            List<UserResponseDTO> projectMembers = projectService.getProjectUsers(log.getProjectId());
+            logger.info("Found {} project members for project ID: {}", projectMembers.size(), log.getProjectId());
+
+            UserResponseDTO assignee = projectMembers.stream()
+                    .filter(user -> "MANAGER".equalsIgnoreCase(user.getRole()))
+                    .findFirst()
+                    .orElse(projectMembers.isEmpty() ? null : projectMembers.get(0));
+
+            if (assignee != null) {
+                ticketDTO.setCreatorUserId(assignee.getId());
+                ticketDTO.setUserEmail(assignee.getEmail());
+                logger.info("Assigned ticket to user: {} ({})", assignee.getEmail(), assignee.getRole());
+            } else {
+                ticketDTO.setCreatorUserId(1L);
+                ticketDTO.setUserEmail("admin@windlogs.com");
+                logger.warn("No suitable assignee found, using default admin account");
+            }
+
+            // Automatically create a ticket
+            ticketDTO.setLogId(savedLog.getId());
+            ticketDTO.setTitle("Auto-generated ticket for log " + savedLog.getId());
+            ticketDTO.setDescription(savedLog.getDescription());
+            ticketDTO.setTenant(savedLog.getTenant());
+
+            TicketDTO createdTicket = ticketService.createTicket(ticketDTO);
+            logger.info("Automatically created ticket with ID: {} for log ID: {}", createdTicket.getId(), savedLog.getId());
 
             return ResponseEntity.ok().body(Map.of(
                     "status", "success",
                     "id", savedLog.getId(),
-                    "message", "Log saved successfully"
+                    "ticketId", createdTicket.getId(),
+                    "message", "Log and ticket saved successfully"
             ));
 
         } catch (Exception e) {
             logger.error("Error processing log: {}", e.getMessage(), e);
-
-            // Return 200 OK even on error to prevent Fluentd from retrying
             return ResponseEntity.ok().body(Map.of(
                     "status", "error",
                     "message", "Error processing log: " + e.getMessage()
             ));
         }
     }
-
     /**
      * Determine LogType from string level
      */
@@ -293,6 +303,14 @@ public class LogController {
         logDTO.setSeverity(log.getSeverity());
         logDTO.setTenant(log.getTenant());
         logDTO.setProjectId(log.getProjectId());
+        logDTO.setPid(log.getPid());
+        logDTO.setThread(log.getThread());
+        logDTO.setClassName(log.getClassName());
+        logDTO.setContainerId(log.getContainerId());
+        logDTO.setContainerName(log.getContainerName());
+        logDTO.setOriginalTimestamp(log.getOriginalTimestamp());
+        logDTO.setTag(log.getTag());
+        
         return logDTO;
     }
 }

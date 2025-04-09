@@ -74,30 +74,7 @@ public class LogService {
         logger.info("Getting logs for project IDs: {}", projectIds);
         return logRepository.findByProjectIdIn(projectIds);
     }
-    
-    /**
-     * Find a project ID by tag (public endpoint - no auth required)
-     * @param tag The tag to search for
-     * @return The project ID if found
-     */
-    public Optional<Long> findProjectIdByTagPublic(String tag) {
-        logger.info("Finding project ID for tag: {}", tag);
-        
-        if (tag == null || tag.isEmpty()) {
-            logger.warn("Empty tag provided, returning empty result");
-            return Optional.empty();
-        }
-        
-        try {
-            // Use the public endpoint to find a project by primary tag
-            return projectService.findProjectByPrimaryTag(tag, "")
-                    .map(ProjectResponseDTO::getId);
-        } catch (Exception e) {
-            logger.error("Error finding project with tag {}: {}", tag, e.getMessage());
-            return Optional.empty();
-        }
-    }
-    
+
     /**
      * Find a project by tag (public endpoint - no auth required)
      * @param tag The tag to search for

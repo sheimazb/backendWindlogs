@@ -18,13 +18,11 @@ public class LogDTO {
     private String customMessage;
     private LogSeverity severity;
     private Long projectId;
-    private String userEmail;
-    
-    // New fields to match Fluentd format
     private String pid;
     private String thread;
     private String className;
     private String containerId;
     private String containerName;
     private Double originalTimestamp;
+    private String tag ;
 } 
