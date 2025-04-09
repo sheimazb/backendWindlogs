@@ -3,6 +3,7 @@ package com.windlogs.tickets.controller;
 import com.windlogs.tickets.dto.SolutionDTO;
 import com.windlogs.tickets.dto.TicketDTO;
 import com.windlogs.tickets.dto.UserResponseDTO;
+import com.windlogs.tickets.enums.Status;
 import com.windlogs.tickets.exception.UnauthorizedException;
 import com.windlogs.tickets.service.AuthService;
 import com.windlogs.tickets.service.SolutionService;
@@ -36,7 +37,6 @@ public class TicketController {
         }
     }
 
-    // 🔹 Créer un ticket (seulement pour les MANAGERS)
     @PostMapping
     public ResponseEntity<TicketDTO> createTicket(
             @RequestBody TicketDTO ticketDTO,
@@ -73,14 +73,12 @@ public class TicketController {
         return ResponseEntity.ok(updatedTicket);
     }
 
-    //  Récupérer tous les tickets d'un tenant
     @GetMapping
     public ResponseEntity<List<TicketDTO>> getAllTickets(@RequestHeader("Authorization") String authorizationHeader) {
         UserResponseDTO user = authService.getAuthenticatedUser(authorizationHeader);
         return ResponseEntity.ok(ticketService.getTicketsByTenant(user.getTenant()));
     }
 
-    // Récupérer un ticket par ID
     @GetMapping("/{id}")
     public ResponseEntity<TicketDTO> getTicketById(@PathVariable Long id, @RequestHeader("Authorization") String authorizationHeader) {
         logger.info("Fetching ticket with ID: {}", id);
@@ -89,10 +87,11 @@ public class TicketController {
         return ResponseEntity.ok(ticketDTO);
     }
 
-    // Mettre à jour un ticket
     @PutMapping("/{id}")
-    public ResponseEntity<TicketDTO> updateTicket(@PathVariable Long id, @RequestBody TicketDTO ticketDTO,
-                                                  @RequestHeader("Authorization") String authorizationHeader) {
+    public ResponseEntity<TicketDTO> updateTicket(
+            @PathVariable Long id,
+            @RequestBody TicketDTO ticketDTO,
+            @RequestHeader("Authorization") String authorizationHeader) {
         UserResponseDTO user = authService.getAuthenticatedUser(authorizationHeader);
         ticketDTO.setTenant(user.getTenant());
 
@@ -100,14 +99,30 @@ public class TicketController {
         return updatedTicket != null ? ResponseEntity.ok(updatedTicket) : ResponseEntity.notFound().build();
     }
 
-    //  Supprimer un ticket
+    @PutMapping("/{ticketId}/status")
+    public ResponseEntity<TicketDTO> updateTicketStatus(
+            @PathVariable Long ticketId,
+            @RequestBody TicketDTO ticketDTO,
+            @RequestHeader("Authorization") String authorizationHeader)
+    {
+        UserResponseDTO user = authService.getAuthenticatedUser(authorizationHeader);
+        ticketDTO.setTenant(user.getTenant()); // Use tenant from token
+
+        TicketDTO updatedTicket = ticketService.updateStatusTicket(ticketId, ticketDTO.getStatus(), user.getTenant());
+
+        return updatedTicket != null ?
+                ResponseEntity.ok(updatedTicket) :
+                ResponseEntity.notFound().build();
+    }
+
+
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTicket(@PathVariable Long id, @RequestHeader("Authorization") String authorizationHeader) {
         UserResponseDTO user = authService.getAuthenticatedUser(authorizationHeader);
         return ticketService.deleteTicketWithTenantValidation(id, user.getTenant()) ? ResponseEntity.ok().build() : ResponseEntity.notFound().build();
     }
 
-    //  Récupérer la solution d'un ticket
     @GetMapping("/{ticketId}/solution")
     public ResponseEntity<SolutionDTO> getTicketSolution(@PathVariable Long ticketId, @RequestHeader("Authorization") String authorization) {
         logger.info("Fetching solution for ticket ID: {}", ticketId);

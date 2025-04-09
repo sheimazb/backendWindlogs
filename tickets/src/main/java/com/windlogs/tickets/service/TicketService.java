@@ -5,6 +5,7 @@ import com.windlogs.tickets.dto.TicketDTO;
 import com.windlogs.tickets.dto.UserResponseDTO;
 import com.windlogs.tickets.entity.Log;
 import com.windlogs.tickets.entity.Ticket;
+import com.windlogs.tickets.enums.Status;
 import com.windlogs.tickets.exception.UnauthorizedException;
 import com.windlogs.tickets.kafka.TicketP;
 import com.windlogs.tickets.kafka.TicketProducer;
@@ -33,7 +34,6 @@ public class TicketService {
     private final SolutionRepository solutionRepository;
     private final TicketProducer ticketProducer;
 
-    // Create a new ticket
     public TicketDTO createTicket(TicketDTO ticketDTO) {
         String incomingTenant = ticketDTO.getTenant();
         logger.info("Creating ticket with tenant: {}", incomingTenant);
@@ -114,61 +114,90 @@ public class TicketService {
         return resultDTO;
     }
 
-    // Get all tickets for a specific tenant
     public List<TicketDTO> getTicketsByTenant(String tenant) {
         return ticketRepository.findByTenant(tenant).stream()
                 .map(ticketMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
-    // Get ticket by ID and tenant
     public TicketDTO getTicketByIdAndTenant(Long id, String tenant) {
         Optional<Ticket> ticket = ticketRepository.findByIdAndTenant(id, tenant);
         return ticket.map(ticketMapper::toDTO).orElse(null);
     }
 
-    // Update ticket with tenant validation
+    public TicketDTO updateStatusTicket(Long ticketId, Status newStatus, String tenant) {
+        logger.info("Request to update status of ticket ID {} for tenant '{}' to '{}'", ticketId, tenant, newStatus);
+
+        Ticket ticket = ticketRepository.findByIdAndTenant(ticketId, tenant)
+                .orElseThrow(() -> {
+                    logger.error("Ticket with ID {} not found for tenant '{}'", ticketId, tenant);
+                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found");
+                });
+
+        ticket.setStatus(newStatus);
+
+        Ticket updatedTicket = ticketRepository.save(ticket);
+
+        logger.info("Ticket ID {} status updated to '{}'", ticketId, newStatus);
+
+        return ticketMapper.toDTO(updatedTicket);
+    }
+
     public TicketDTO updateTicketWithTenantValidation(Long id, TicketDTO ticketDTO, String tenant) {
-        // Check if the ticket exists and belongs to the tenant
-        Optional<Ticket> existingTicket = ticketRepository.findByIdAndTenant(id, tenant);
-        
-        if (existingTicket.isPresent()) {
-            Ticket ticket = ticketMapper.toEntity(ticketDTO);
-            ticket.setId(id);
-            // Ensure tenant is not changed
-            ticket.setTenant(tenant);
-            // Preserve creator user ID
-            ticket.setCreatorUserId(existingTicket.get().getCreatorUserId());
-            // Preserve log reference
-            ticket.setLog(existingTicket.get().getLog());
-            
-            // Ensure title and description are set
-            if (ticket.getTitle() == null || ticket.getTitle().isEmpty()) {
-                ticket.setTitle(existingTicket.get().getTitle());
-            }
-            
-            if (ticket.getDescription() == null || ticket.getDescription().isEmpty()) {
-                ticket.setDescription(existingTicket.get().getDescription());
-            }
-            
-            Ticket updatedTicket = ticketRepository.save(ticket);
+        Optional<Ticket> existingTicketOpt = ticketRepository.findByIdAndTenant(id, tenant);
+
+        if (existingTicketOpt.isPresent()) {
+            Ticket existingTicket = getTicket(ticketDTO, existingTicketOpt);
+
+            Ticket updatedTicket = ticketRepository.save(existingTicket);
             TicketDTO updatedTicketDTO = ticketMapper.toDTO(updatedTicket);
-            
-            // Send Kafka message for the update
+
             ticketProducer.sendTicketP(
-                new TicketP(
-                    updatedTicketDTO.getStatus(),
-                    updatedTicketDTO.getUserEmail(),
-                    updatedTicketDTO.getTitle(),
-                    updatedTicketDTO.getDescription(),
-                    updatedTicketDTO.getTenant()
-                )
+                    new TicketP(
+                            updatedTicketDTO.getStatus(),
+                           
+                            updatedTicketDTO.getUserEmail(),
+                            updatedTicketDTO.getTitle(),
+                            updatedTicketDTO.getDescription(),
+                            updatedTicketDTO.getTenant()
+                    )
             );
-            
+
             return updatedTicketDTO;
         }
-        
+
         return null;
+    }
+
+
+    private static Ticket getTicket(TicketDTO ticketDTO, Optional<Ticket> existingTicketOpt) {
+        Ticket existingTicket = existingTicketOpt.get();
+
+        if (ticketDTO.getTitle() != null && !ticketDTO.getTitle().isEmpty()) {
+            existingTicket.setTitle(ticketDTO.getTitle());
+        }
+
+        if (ticketDTO.getDescription() != null && !ticketDTO.getDescription().isEmpty()) {
+            existingTicket.setDescription(ticketDTO.getDescription());
+        }
+
+        if (ticketDTO.getAssignedToUserId() != null) {
+            existingTicket.setAssignedToUserId(ticketDTO.getAssignedToUserId());
+        }
+
+        if (ticketDTO.getStatus() != null) {
+            existingTicket.setStatus(ticketDTO.getStatus());
+        }
+
+        if(ticketDTO.getPriority()!=null)
+        {
+            existingTicket.setPriority(ticketDTO.getPriority());
+        }
+
+        if (ticketDTO.getUserEmail() != null && !ticketDTO.getUserEmail().isEmpty()) {
+            existingTicket.setUserEmail(ticketDTO.getUserEmail());
+        }
+        return existingTicket;
     }
 
     // Delete ticket with tenant validation
