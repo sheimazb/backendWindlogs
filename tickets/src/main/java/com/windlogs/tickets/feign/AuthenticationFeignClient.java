@@ -26,4 +26,7 @@ public interface AuthenticationFeignClient {
     
     @GetMapping("/api/v1/projects/public/by-tag/{tag}")
     List<ProjectResponseDTO> findProjectsByPrimaryTagPublic(@PathVariable("tag") String tag);
+
+    @GetMapping("/api/v1/projects/public/{projectId}/members")
+    List<UserResponseDTO> getProjectMembers(@PathVariable("projectId") Long projectId);
 }

@@ -42,4 +42,10 @@ public class AuthenticationFeignFallback implements AuthenticationFeignClient {
         logger.error("Fallback for findProjectsByPrimaryTagPublic called with tag: {}", tag);
         return Collections.emptyList();
     }
+
+    @Override
+    public List<UserResponseDTO> getProjectMembers(Long projectId) {
+        logger.error("Fallback for getProjectMembers called for projectId: {}", projectId);
+        return Collections.emptyList();
+    }
 } 
