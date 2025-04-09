@@ -5,4 +5,5 @@ import com.windlogs.authentication.entity.ProjectUserId;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ProjectUserRepository extends JpaRepository<ProjectUser, ProjectUserId> {
-} 
+
+}
