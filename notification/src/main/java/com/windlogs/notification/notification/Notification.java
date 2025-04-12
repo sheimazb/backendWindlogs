@@ -23,6 +23,7 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @Column(length = 1000)
     private String message;
     
     private String subject;

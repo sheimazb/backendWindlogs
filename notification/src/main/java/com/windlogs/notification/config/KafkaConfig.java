@@ -20,6 +20,10 @@ import org.springframework.util.backoff.FixedBackOff;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Kafka configuration for log event consumption
+ * Simplified to focus only on log events from Fluentd
+ */
 @EnableKafka
 @Configuration
 public class KafkaConfig {
@@ -48,7 +52,7 @@ public class KafkaConfig {
         props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class.getName());
         
         // Configure the JSON deserializer
-        props.put(JsonDeserializer.TRUSTED_PACKAGES, "com.windlogs.tickets.kafka,com.windlogs.notification.kafka");
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");  // Trust all packages for debugging
         props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.windlogs.notification.kafka.TicketsLogEvent");
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
         props.put("spring.json.value.default.type", "com.windlogs.notification.kafka.TicketsLogEvent");
@@ -77,7 +81,6 @@ public class KafkaConfig {
                 // Log the received data for debugging
                 if (record.value() != null) {
                     try {
-                        // Convert to Object first, then get its string representation
                         logger.error("Record value: {}", record.value().toString());
                     } catch (Exception e) {
                         logger.error("Could not convert record value to string", e);

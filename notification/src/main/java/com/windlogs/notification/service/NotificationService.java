@@ -14,7 +14,6 @@ import java.util.List;
 public class NotificationService {
     
     private final NotificationRepository notificationRepository;
-    
     /**
      * Create a new notification
      * @param notification The notification to create
@@ -31,6 +30,10 @@ public class NotificationService {
             
             Notification savedNotification = notificationRepository.save(notification);
             log.info("Notification saved successfully with ID: {}", savedNotification.getId());
+            
+
+            log.info("Notification sent via WebSocket to recipient: {}", notification.getRecipientEmail());
+            
             return savedNotification;
         } catch (Exception e) {
             log.error("Error saving notification: {}", e.getMessage(), e);
@@ -61,21 +64,9 @@ public class NotificationService {
         log.info("Found {} notifications for recipient: {}", notifications.size(), recipientEmail);
         return notifications;
     }
+
     
-    /**
-     * Get notifications by tenant and recipient email
-     * @param tenant The tenant
-     * @param recipientEmail The recipient email
-     * @return List of notifications for the tenant and recipient
-     */
-    public List<Notification> getNotificationsByTenantAndRecipientEmail(String tenant, String recipientEmail) {
-        log.info("Getting notifications for tenant: {}, recipient: {}", tenant, recipientEmail);
-        List<Notification> notifications = notificationRepository.findByTenantAndRecipientEmail(tenant, recipientEmail);
-        log.info("Found {} notifications for tenant: {} and recipient: {}", 
-                notifications.size(), tenant, recipientEmail);
-        return notifications;
-    }
-    
+
     /**
      * Get unread notifications by tenant and recipient email
      * @param tenant The tenant

@@ -1,19 +1,19 @@
 package com.windlogs.notification.kafka;
 
-import java.time.LocalDateTime;
-
 /**
- * Event received from Kafka when a log is created or updated
+ * Internal LogEvent representation for notification processing
+ * Simplified to include only essential fields
  */
 public record LogEvent(
-        Long logId,
-        String type,
-        String severity,
-        String description,
-        String source,
-        String tenant,
-        Long projectId,
-        LocalDateTime timestamp,
-        String userEmail
-) {
-} 
+    Long logId,
+    String type,
+    String severity,
+    String source,
+    String tenant,
+    Long projectId,
+    String timestamp,
+    String description,
+    String class_name,
+    String container_name,
+    String recipientEmail
+) {} 
