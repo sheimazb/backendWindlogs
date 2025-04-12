@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 
 import com.windlogs.tickets.enums.LogSeverity;
 import com.windlogs.tickets.enums.LogType;
+import com.windlogs.tickets.enums.Status;
 
 @RestController
 @RequestMapping("/api/v1/logs")
@@ -197,7 +198,7 @@ public class LogController {
 
             Log savedLog = logRepository.save(log);
             logger.info("Successfully saved log with ID: {}", savedLog.getId());
-
+            
             TicketDTO ticketDTO = new TicketDTO();
 
             List<UserResponseDTO> projectMembers = projectService.getProjectUsers(log.getProjectId());
@@ -224,9 +225,15 @@ public class LogController {
             ticketDTO.setDescription(savedLog.getDescription());
             ticketDTO.setTenant(savedLog.getTenant());
 
+            // Create a ticket with appropriate data
             TicketDTO createdTicket = ticketService.createTicket(ticketDTO);
-            logger.info("Automatically created ticket with ID: {} for log ID: {}", createdTicket.getId(), savedLog.getId());
-
+            logger.info("Ticket created with ID: {}, tenant: {}", createdTicket.getId(), createdTicket.getTenant());
+            
+            // Send log notification with ticket data including userEmail
+            logService.sendLogNotification(savedLog, createdTicket.getTenant(), ticketDTO.getUserEmail());
+            logger.info("Notification sent for log ID: {}, tenant: {}, userEmail: {}", 
+                    savedLog.getId(), createdTicket.getTenant(), ticketDTO.getUserEmail());
+            
             return ResponseEntity.ok().body(Map.of(
                     "status", "success",
                     "id", savedLog.getId(),

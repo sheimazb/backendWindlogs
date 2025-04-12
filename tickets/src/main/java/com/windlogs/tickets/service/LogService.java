@@ -138,48 +138,63 @@ public class LogService {
         Log savedLog = logRepository.save(log);
         logger.info("Saved log with ID: {}", savedLog.getId());
         
-        // Skip Kafka event for simplicity
+        // Send notification via Kafka
+       // sendLogCreatedEvent(savedLog, logDTO.getUserEmail());
         
         return savedLog;
     }
     
     /**
+     * Public method to send a log notification
+     * Can be called externally to ensure notifications are sent for logs
+     * @param log The log to send a notification for
+     * @param tenant The tenant from the ticket
+     * @param userEmail The user email from the ticket
+     */
+    public void sendLogNotification(Log log, String tenant, String userEmail) {
+        sendLogCreatedEvent(log, tenant, userEmail);
+    }
+    
+    /**
      * Send a log created event to Kafka
      * @param log The log that was created
-     * @param userEmail The email of the user who created the log (optional)
+     * @param tenant The tenant from the ticket
+     * @param userEmail The user email from the ticket
      */
-    private void sendLogCreatedEvent(Log log, String userEmail) {
+    private void sendLogCreatedEvent(Log log, String tenant, String userEmail) {
         try {
-            // Convert LocalDateTime to Unix timestamp
+            // Get timestamp
             double timestamp = log.getOriginalTimestamp() != null 
                 ? log.getOriginalTimestamp() 
                 : log.getTimestamp().atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() / 1000.0;
 
-            // Get values with fallbacks for null fields
-            String pid = log.getPid() != null ? log.getPid() : "1";
-            String thread = log.getThread() != null ? log.getThread() : log.getErrorCode();
+            // Get essential log information
             String className = log.getClassName() != null ? log.getClassName() : log.getSource();
-            String containerId = log.getContainerId() != null ? log.getContainerId() : "";
-            String containerName = log.getContainerName() != null ? log.getContainerName() : "default_container";
-
-            LogEvent logEvent = new LogEvent(
-                log.getTimestamp().toString(), // time
-                log.getType().toString(),      // level
-                pid,                           // pid
-                thread,                        // thread
-                className,                     // class_name
-                log.getCustomMessage(),        // message
-                log.getSource(),               // source
-                containerId,                   // container_id
-                containerName,                 // container_name
-                timestamp                      // timestamp
-            );
+            if (className == null) className = "Unknown";
             
+            // Simple message
+            String message = "Error in " + className;
+            
+            // Create a simple log event with essential information
+            LogEvent logEvent = new LogEvent(
+                    log.getTimestamp().toString(),
+                    log.getType() != null ? log.getType().name() : "INFO",
+                    log.getPid() != null ? log.getPid() : "1",
+                    log.getThread() != null ? log.getThread() : "",
+                    className,
+                    message,
+                    tenant, // Use the tenant from the ticket
+                    log.getId().toString(),
+                    log.getContainerName() != null ? log.getContainerName() : "windlogs",
+                    timestamp,
+                    userEmail  // Send the user email from the ticket
+            );
+
+            // Send the event
             logProducer.sendLogEvent(logEvent);
-            logger.info("Log created event sent for log ID: {}", log.getId());
+            logger.info("Log notification sent for log ID: {}, tenant: {}, userEmail: {}", log.getId(), tenant, userEmail);
         } catch (Exception e) {
-            // Log the error but don't fail the operation
-            logger.error("Failed to send log created event for log ID: {}", log.getId(), e);
+            logger.error("Error sending log notification: {}", e.getMessage(), e);
         }
     }
 } 

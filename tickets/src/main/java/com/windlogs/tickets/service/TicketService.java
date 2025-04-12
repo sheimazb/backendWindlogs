@@ -7,8 +7,7 @@ import com.windlogs.tickets.entity.Log;
 import com.windlogs.tickets.entity.Ticket;
 import com.windlogs.tickets.enums.Status;
 import com.windlogs.tickets.exception.UnauthorizedException;
-import com.windlogs.tickets.kafka.TicketP;
-import com.windlogs.tickets.kafka.TicketProducer;
+import com.windlogs.tickets.feign.AuthenticationFeignClient;
 import com.windlogs.tickets.mapper.TicketMapper;
 import com.windlogs.tickets.repository.SolutionRepository;
 import com.windlogs.tickets.repository.TicketRepository;
@@ -32,7 +31,6 @@ public class TicketService {
     private final AuthService authService;
     private final LogService logService;
     private final SolutionRepository solutionRepository;
-    private final TicketProducer ticketProducer;
 
     public TicketDTO createTicket(TicketDTO ticketDTO) {
         String incomingTenant = ticketDTO.getTenant();
@@ -100,16 +98,6 @@ public class TicketService {
         
         logger.info("Ticket created successfully with ID: {}, tenant: {}, logId: {}", 
                 resultDTO.getId(), resultDTO.getTenant(), resultDTO.getLogId());
-
-        ticketProducer.sendTicketP(
-                new TicketP(
-                        resultDTO.getStatus(),
-                        resultDTO.getUserEmail(),
-                        resultDTO.getTitle(),
-                        resultDTO.getDescription(),
-                        resultDTO.getTenant()
-                )
-        );
         
         return resultDTO;
     }
@@ -152,23 +140,11 @@ public class TicketService {
             Ticket updatedTicket = ticketRepository.save(existingTicket);
             TicketDTO updatedTicketDTO = ticketMapper.toDTO(updatedTicket);
 
-            ticketProducer.sendTicketP(
-                    new TicketP(
-                            updatedTicketDTO.getStatus(),
-                           
-                            updatedTicketDTO.getUserEmail(),
-                            updatedTicketDTO.getTitle(),
-                            updatedTicketDTO.getDescription(),
-                            updatedTicketDTO.getTenant()
-                    )
-            );
-
             return updatedTicketDTO;
         }
 
         return null;
     }
-
 
     private static Ticket getTicket(TicketDTO ticketDTO, Optional<Ticket> existingTicketOpt) {
         Ticket existingTicket = existingTicketOpt.get();
@@ -200,7 +176,6 @@ public class TicketService {
         return existingTicket;
     }
 
-    // Delete ticket with tenant validation
     public boolean deleteTicketWithTenantValidation(Long id, String tenant) {
         Optional<Ticket> ticket = ticketRepository.findByIdAndTenant(id, tenant);
         
@@ -212,7 +187,6 @@ public class TicketService {
         return false;
     }
 
-    // Assign ticket to a user with tenant validation
     public TicketDTO assignTicket(Long ticketId, Long assignedToUserId, String managerTenant, String authorizationHeader) {
         // Check if the ticket exists and belongs to the manager's tenant
         Optional<Ticket> optionalTicket = ticketRepository.findByIdAndTenant(ticketId, managerTenant);
@@ -258,22 +232,11 @@ public class TicketService {
         return ticketMapper.toDTO(updatedTicket);
     }
 
-    /**
-     * Check if a ticket has a solution
-     * @param ticketId The ticket ID
-     * @return true if the ticket has a solution, false otherwise
-     */
     public boolean hasTicketSolution(Long ticketId) {
         logger.info("Checking if ticket ID: {} has a solution", ticketId);
         return solutionRepository.findByTicketId(ticketId).isPresent();
     }
-
-    /**
-     * Get a ticket with solution information
-     * @param id The ticket ID
-     * @param tenant The tenant
-     * @return The ticket with solution information
-     */
+   
     public TicketDTO getTicketWithSolutionInfo(Long id, String tenant) {
         logger.info("Getting ticket with solution info for ID: {}, tenant: {}", id, tenant);
         

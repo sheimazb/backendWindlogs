@@ -76,6 +76,12 @@ spring:
             - RemoveRequestHeader=Cookie
             - RewritePath=/(?<segment>.*), /$\{segment}
             - AddRequestHeader=X-Forwarded-Prefix, /api/v1/notifications
+        - id: notification-service-websocket
+          uri: lb:ws://NOTIFICATION-SERVICE
+          predicates:
+            - Path=/ws/**
+          filters:
+            - RemoveRequestHeader=Cookie
       globalcors:
         corsConfigurations:
           '[/**]':
@@ -95,10 +101,17 @@ spring:
               - Origin
               - Access-Control-Request-Method
               - Access-Control-Request-Headers
+              - Sec-WebSocket-Key
+              - Sec-WebSocket-Version
+              - Sec-WebSocket-Extensions
+              - Sec-WebSocket-Protocol
+              - Upgrade
+              - Connection
             maxAge: 3600  # Cache preflight requests for 1 hour
             allowCredentials: true
             exposedHeaders:
               - Authorization
+              - Sec-WebSocket-Accept
   web:
     resources:
       static-locations: classpath:/static/,file:./public/

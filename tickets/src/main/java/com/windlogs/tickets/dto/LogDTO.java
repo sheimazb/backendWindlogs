@@ -24,5 +24,5 @@ public class LogDTO {
     private String containerId;
     private String containerName;
     private Double originalTimestamp;
-    private String tag ;
+    private String tag;
 } 

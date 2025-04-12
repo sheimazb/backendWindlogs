@@ -8,9 +8,6 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Service;
 
-/**
- * Producer for sending log events to Kafka
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -19,25 +16,23 @@ public class LogProducer {
     private final KafkaTemplate<String, LogEvent> logEventKafkaTemplate;
     private static final String TOPIC = "log-events-topic";
 
-    /**
-     * Send a log event to Kafka
-     * @param logEvent The log event to send
-     */
     public void sendLogEvent(LogEvent logEvent) {
-        log.info("Sending log event to Kafka: time={}, level={}, source={}, container={}", 
-                logEvent.time(), logEvent.level(), logEvent.source(), logEvent.container_name());
+        log.info("Sending log notification: level={}, message={}, log_id={}, userEmail={}", 
+                logEvent.level(), logEvent.message(), logEvent.container_id(), logEvent.userEmail());
         
         Message<LogEvent> message = MessageBuilder
                 .withPayload(logEvent)
                 .setHeader(KafkaHeaders.TOPIC, TOPIC)
-                .setHeader("type", "logEvent")
                 .build();
         
         try {
+            log.info("Sending Kafka message to topic: {} with headers: {}", TOPIC, message.getHeaders());
             logEventKafkaTemplate.send(message);
-            log.info("Log event sent successfully");
+            log.info("Log notification successfully sent to Kafka broker");
         } catch (Exception e) {
-            log.error("Error sending log event to Kafka: {}", e.getMessage(), e);
+            log.error("Error sending log notification to Kafka: {}", e.getMessage(), e);
+            // Print stack trace for debugging
+            e.printStackTrace();
             throw e;
         }
     }

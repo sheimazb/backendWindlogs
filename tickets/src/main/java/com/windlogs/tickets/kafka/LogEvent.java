@@ -1,7 +1,8 @@
 package com.windlogs.tickets.kafka;
 
 /**
- * Event record matching Fluentd log format
+ * Event record for log notification via Kafka
+ * Simplified to include only essential fields
  */
 public record LogEvent(
     String time,
@@ -13,5 +14,6 @@ public record LogEvent(
     String source,
     String container_id,
     String container_name,
-    double timestamp
+    double timestamp,
+    String userEmail
 ) {} 
