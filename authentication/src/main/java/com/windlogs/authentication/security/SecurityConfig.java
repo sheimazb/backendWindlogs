@@ -42,7 +42,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/request-password-change",
                                 "/api/v1/auth/verify-and-change-password",
                                 "/api/v1/projects/public/by-tag/**",
-                                "/api/v1/projects/public/{projectId}/members"
+                                "/api/v1/projects/public/{projectId}/members",
+                                "/ws/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/employees/create-staff").hasAuthority("CREATE_STAFF")
                         .requestMatchers("/api/v1/employees/my-staff",
