@@ -4,8 +4,8 @@ import java.util.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -16,8 +16,8 @@ import com.windlogs.authentication.entity.Project;
 import com.windlogs.authentication.entity.User;
 import com.windlogs.authentication.entity.Role;
 import com.windlogs.authentication.service.ProjectService;
+import com.windlogs.authentication.dto.ProjectRequestDTO;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -27,12 +27,14 @@ public class ProjectController {
     private static final Logger logger = LoggerFactory.getLogger(ProjectController.class);
     private final ProjectService projectService;
 
-    @PostMapping("/create")
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAuthority('CREATE_PROJECT')")
-    public ResponseEntity<Project> createProject(@RequestBody Project project, Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        
+    public ResponseEntity<Project> createProject(
+            @ModelAttribute ProjectRequestDTO projectDTO,
+            Authentication authentication) {
         try {
+            User user = (User) authentication.getPrincipal();
+            
             if (user.getRole() != Role.PARTNER) {
                 logger.warn("Unauthorized attempt to create project by non-partner user: {}", user.getEmail());
                 throw new ResponseStatusException(
@@ -41,39 +43,21 @@ public class ProjectController {
                 );
             }
 
-            // Ensure project tenant matches partner's tenant
+            // Convert DTO to Project entity
+            Project project = projectDTO.toProject();
+            
+            // Set additional project values
             String partnerTenant = user.getTenant();
-            if (project.getTenant() != null && !project.getTenant().equals(partnerTenant)) {
-                logger.warn("Attempt to create project with mismatched tenant. User tenant: {}, Project tenant: {}", 
-                    partnerTenant, project.getTenant());
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Project tenant must match partner's tenant"
-                );
-            }
-
-            // Initialize collections if null
-            if (project.getTags() == null) {
-                project.setTags(new HashSet<>());
-            }
-            if (project.getAllowedRoles() == null) {
-                project.setAllowedRoles(new HashSet<>());
-            }
-            if (project.getDocumentationUrls() == null) {
-                project.setDocumentationUrls(new ArrayList<>());
-            }
-
-            // Set default values
             project.setTenant(partnerTenant);
             project.setCreator(user);
-            project.setProgressPercentage(0);
+            project.setProgressPercentage(project.getProgressPercentage() > 0 ? project.getProgressPercentage() : 0);
             project.setMembersCount(1); // Starting with creator
             if (project.getPayed() == null) {
                 project.setPayed(false);
             }
             
             logger.info("Creating new project for partner: {} in tenant: {}", user.getEmail(), partnerTenant);
-            Project createdProject = projectService.createProject(project);
+            Project createdProject = projectService.createProject(project, projectDTO.getLogo());
             
             // Add the creator as a project member
             createdProject.addMember(user, true);
@@ -119,42 +103,53 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.getAllProjectsByTenant(user.getTenant()));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Project> updateProject(
             @PathVariable Long id,
-            @RequestBody Project updatedProject,
+            @ModelAttribute ProjectRequestDTO projectDTO,
             Authentication authentication) {
-        User user = (User) authentication.getPrincipal();
-        
-        Project existingProject = projectService.getProjectById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Project not found with id: " + id
-                ));
+        try {
+            User user = (User) authentication.getPrincipal();
+            
+            Project existingProject = projectService.getProjectById(id)
+                    .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Project not found with id: " + id
+                    ));
 
-        if (!existingProject.getTenant().equals(user.getTenant())) {
+            if (!existingProject.getTenant().equals(user.getTenant())) {
+                throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You don't have access to this project"
+                );
+            }
+
+            if (!existingProject.getCreator().equals(user) && user.getRole() != Role.PARTNER) {
+                throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the project creator or partners can update the project"
+                );
+            }
+
+            // Convert DTO to Project entity
+            Project updatedProject = projectDTO.toProject();
+            updatedProject.setId(id);
+            updatedProject.setCreator(existingProject.getCreator());
+            updatedProject.setTenant(existingProject.getTenant());
+            
+            return projectService.updateProject(id, updatedProject, projectDTO.getLogo())
+                    .map(ResponseEntity::ok)
+                    .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Failed to update project"
+                    ));
+        } catch (Exception e) {
+            logger.error("Failed to update project: {}", e.getMessage(), e);
             throw new ResponseStatusException(
-                HttpStatus.FORBIDDEN,
-                "You don't have access to this project"
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to update project: " + e.getMessage()
             );
         }
-
-        if (!existingProject.getCreator().equals(user) && user.getRole() != Role.PARTNER) {
-            throw new ResponseStatusException(
-                HttpStatus.FORBIDDEN,
-                "Only the project creator or partners can update the project"
-            );
-        }
-
-        updatedProject.setCreator(existingProject.getCreator());
-        updatedProject.setTenant(existingProject.getTenant());
-        
-        return projectService.updateProject(id, updatedProject)
-                .map(ResponseEntity::ok)
-                .orElseThrow(() -> new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to update project"
-                ));
     }
 
     @DeleteMapping("/{id}")
