@@ -31,6 +31,21 @@ spring:
       properties:
         spring.json.trusted.packages: "com.windlogs.tickets.kafka,com.windlogs.notification.kafka"
         spring.json.type.mapping: logEvent:com.windlogs.notification.kafka.LogEvent
+  webflux:
+    websocket:
+      max-frame-payload-length: 65536
+      idle-timeout: 300000
+  web:
+    resources:
+      static-locations: classpath:/static/,file:./public/
+
+# WebSocket configuration
+websocket:
+  allowed-origins: "*"
+  endpoint: /ws-notification
+  topic-prefix: /topic
+  application-prefix: /app
+  user-prefix: /user
 
 # Authentication service configuration
 authentication:
@@ -56,6 +71,7 @@ logging:
     org:
       springframework:
         kafka: INFO
+        web.socket: DEBUG  # Add WebSocket debug logging
 
 server:
   port: 8084 

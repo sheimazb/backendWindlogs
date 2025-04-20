@@ -112,6 +112,10 @@ spring:
             exposedHeaders:
               - Authorization
               - Sec-WebSocket-Accept
+  webflux:
+    websocket:
+      max-frame-payload-length: 65536
+      idle-timeout: 300000
   web:
     resources:
       static-locations: classpath:/static/,file:./public/
