@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket STOMP Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
+</head>
+<body>
+    <h1>STOMP WebSocket Test</h1>
+    <div>
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <button onclick="subscribe()">Subscribe to /topic/notifications</button>
+        <button onclick="sendMessage()">Send Test Message</button>
+    </div>
+    
+    <h2>Status:</h2>
+    <div id="status">Disconnected</div>
+    
+    <h2>Messages:</h2>
+    <div id="messages"></div>
+    
+    <script>
+        let stompClient = null;
+        let subscription = null;
+        
+        function setStatus(status) {
+            document.getElementById('status').textContent = status;
+        }
+        
+        function addMessage(message) {
+            const msgDiv = document.getElementById('messages');
+            const newMsg = document.createElement('div');
+            newMsg.textContent = message;
+            msgDiv.appendChild(newMsg);
+            console.log(message);
+        }
+        
+        function connect() {
+            setStatus('Connecting...');
+            
+            // Use direct WebSocket connection instead of SockJS
+            const wsUrl = 'ws://localhost:8084/ws-notification';
+            addMessage('Attempting to connect to: ' + wsUrl);
+            
+            // Create STOMP client over direct WebSocket
+            stompClient = new StompJs.Client({
+                brokerURL: wsUrl,
+                debug: function(str) {
+                    console.log(str);
+                },
+                reconnectDelay: 5000,
+                heartbeatIncoming: 4000,
+                heartbeatOutgoing: 4000
+            });
+            
+            // Connect handlers
+            stompClient.onConnect = function(frame) {
+                setStatus('Connected: ' + frame);
+                addMessage('Connected: ' + frame);
+            };
+            
+            stompClient.onStompError = function(frame) {
+                setStatus('Error: ' + frame.headers.message);
+                addMessage('Error: ' + frame.headers.message);
+                console.error('STOMP error', frame);
+            };
+
+            stompClient.onWebSocketError = function(evt) {
+                setStatus('WebSocket Error');
+                addMessage('WebSocket Error: ' + evt.toString());
+                console.error('WebSocket error', evt);
+            };
+            
+            stompClient.activate();
+        }
+        
+        function disconnect() {
+            if (stompClient !== null) {
+                stompClient.deactivate();
+                stompClient = null;
+                setStatus('Disconnected');
+                addMessage('Disconnected');
+            }
+        }
+        
+        function subscribe() {
+            if (stompClient !== null && stompClient.connected) {
+                // Subscribe to the notifications topic
+                subscription = stompClient.subscribe('/topic/notifications', function(message) {
+                    addMessage('Received: ' + message.body);
+                });
+                
+                setStatus('Subscribed to /topic/notifications');
+                addMessage('Subscribed to /topic/notifications');
+            } else {
+                setStatus('Not connected');
+                addMessage('Cannot subscribe - not connected');
+            }
+        }
+        
+        function sendMessage() {
+            if (stompClient !== null && stompClient.connected) {
+                const testMessage = {
+                    message: 'Test notification',
+                    timestamp: new Date().toISOString()
+                };
+                
+                stompClient.publish({
+                    destination: '/app/notification.send',
+                    body: JSON.stringify(testMessage)
+                });
+                
+                addMessage('Sent message: ' + JSON.stringify(testMessage));
+            } else {
+                setStatus('Not connected');
+                addMessage('Cannot send message - not connected');
+            }
+        }
+    </script>
+</body>
+</html> 

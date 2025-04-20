@@ -5,7 +5,9 @@ import com.windlogs.notification.service.NotificationService;
 import com.windlogs.notification.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -24,6 +26,8 @@ public class LogEventConsumer {
     private final NotificationService notificationService;
     private final UserService userService;
 
+    @Autowired
+    SimpMessagingTemplate template;
     /**
      * Listen for log events from Kafka
      * @param ticketsLogEvent The log event from Fluentd

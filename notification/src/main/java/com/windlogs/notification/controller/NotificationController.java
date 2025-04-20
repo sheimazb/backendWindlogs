@@ -9,8 +9,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -41,19 +44,53 @@ public class NotificationController {
         
         return ResponseEntity.ok(notificationDTOs);
     }
-    
-    /**
-     * Mark all notifications as read for a user
-     * @param payload Map containing the user's email
-     */
+
     @MessageMapping("/notification.markAllAsRead")
+    @SendToUser("/topic/notifications")
     public void markAllAsRead(@Payload Map<String, String> payload) {
         String email = payload.get("email");
         log.info("Received WebSocket request to mark all notifications as read for user: {}", email);
-        
-        log.info("Marked all notifications as read for user: {}", email);
+
+        // Actually mark notifications as read using the service
+        List<Notification> updatedNotifications = notificationService.markAllNotificationsAsRead(email);
+
+        // Convert to DTOs and send back through WebSocket
+        List<NotificationDTO> notificationDTOs = updatedNotifications.stream()
+                .map(notificationMapper::toDTO)
+                .collect(Collectors.toList());
+
+        log.info("Marked {} notifications as read for user: {}", notificationDTOs.size(), email);
     }
-    
+    /**
+     * WebSocket endpoint for receiving new notifications
+     */
+    @MessageMapping("/notification.send")
+    @SendTo("/topic/notifications")
+    public NotificationDTO sendNotification(@Payload NotificationDTO notificationDTO) {
+        log.info("Received WebSocket notification for recipient: {}", notificationDTO.getRecipientEmail());
+
+        Notification notification = notificationMapper.toEntity(notificationDTO);
+        Notification createdNotification = notificationService.createNotification(notification);
+        return notificationMapper.toDTO(createdNotification);
+    }
+
+    /**
+     * WebSocket endpoint for user-specific notifications
+     */
+    @MessageMapping("/notification.private")
+    @SendToUser("/topic/notifications")
+    public NotificationDTO sendPrivateNotification(
+            @Payload NotificationDTO notificationDTO,
+            Principal principal
+    ) {
+        log.info("Received private WebSocket notification for recipient: {}", notificationDTO.getRecipientEmail());
+
+        Notification notification = notificationMapper.toEntity(notificationDTO);
+        Notification createdNotification = notificationService.createNotification(notification);
+        return notificationMapper.toDTO(createdNotification);
+    }
+
+
     /**
      * Get unread notifications for the current user
      * @param email The user's email
@@ -122,35 +159,5 @@ public class NotificationController {
         
         return ResponseEntity.ok(count);
     }
-    
-    /**
-     * Test endpoint to send a notification to a user
-     * @param email The recipient's email
-     * @param tenant The tenant
-     * @return The created notification
-     */
-    @PostMapping("/test")
-    public ResponseEntity<NotificationDTO> sendTestNotification(
-            @RequestParam String email,
-            @RequestParam String tenant) {
-        log.info("Sending test notification to user: {}, tenant: {}", email, tenant);
-        
-        // Create a test notification
-        Notification notification = Notification.builder()
-                .subject("Test Notification")
-                .message("This is a test notification sent at " + LocalDateTime.now())
-                .sourceType("TEST")
-                .sourceId(1L)
-                .tenant(tenant)
-                .recipientEmail(email)
-                .read(false)
-                .createdAt(LocalDateTime.now())
-                .build();
-        
-        // Save and send the notification
-        Notification createdNotification = notificationService.createNotification(notification);
-        NotificationDTO notificationDTO = notificationMapper.toDTO(createdNotification);
-        
-        return ResponseEntity.ok(notificationDTO);
-    }
+
 } 

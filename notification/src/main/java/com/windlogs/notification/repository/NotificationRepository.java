@@ -23,13 +23,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
      */
     List<Notification> findByRecipientEmail(String recipientEmail);
     
-    /**
-     * Find notifications by tenant and recipient email
-     * @param tenant The tenant
-     * @param recipientEmail The recipient email
-     * @return List of notifications for the tenant and recipient
-     */
-    List<Notification> findByTenantAndRecipientEmail(String tenant, String recipientEmail);
+
+    List<Notification> findByRecipientEmailAndRead(String recipientEmail, boolean isRead);
     
     /**
      * Find unread notifications by tenant and recipient email
