@@ -4,12 +4,24 @@ import com.windlogs.authentication.entity.*;
 import com.windlogs.authentication.repository.ProjectRepository;
 import com.windlogs.authentication.repository.UserRepository;
 import com.windlogs.authentication.repository.ProjectUserRepository;
+import com.windlogs.authentication.dto.ProjectMultipartRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -28,6 +40,9 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ProjectUserRepository projectUserRepository;
+    
+    @Value("${file.upload-dir:uploads/}")
+    private String uploadDir;
 
     /**
      * Retrieves a user by their ID.
@@ -44,9 +59,10 @@ public class ProjectService {
      * Creates a new project and saves it to the database.
      *
      * @param project the {@link Project} object to create
+     * @param logo
      * @return the saved {@link Project} entity
      */
-    public Project createProject(Project project) {
+    public Project createProject(Project project, MultipartFile logo) {
         logger.info("Creating new project: {}", project.getName());
         return projectRepository.save(project);
     }
@@ -76,11 +92,12 @@ public class ProjectService {
     /**
      * Updates an existing project with the provided details.
      *
-     * @param id the ID of the project to update
+     * @param id             the ID of the project to update
      * @param updatedProject the {@link Project} object containing updated fields
+     * @param logo
      * @return an {@link Optional} containing the updated {@link Project} if found, or empty if not
      */
-    public Optional<Project> updateProject(Long id, Project updatedProject) {
+    public Optional<Project> updateProject(Long id, Project updatedProject, MultipartFile logo) {
         logger.info("Updating project with ID: {}", id);
 
         return projectRepository.findById(id).map(existingProject -> {
@@ -256,5 +273,30 @@ public class ProjectService {
         return user.getProjectUsers().stream()
                 .map(ProjectUser::getProject)
                 .collect(Collectors.toSet());
+    }
+
+    /**
+     * Helper method to save a logo file to disk and return its URL
+     *
+     * @param logoFile the MultipartFile to save
+     * @return the URL where the file can be accessed
+     * @throws IOException if the file cannot be saved
+     */
+    private String saveLogoFile(MultipartFile logoFile) throws IOException {
+        Date createdDate = new Date();
+        String storageFileName = createdDate.getTime() + "_" + logoFile.getOriginalFilename();
+        
+        try (InputStream inputStream = logoFile.getInputStream()) {
+            // Create directory if it doesn't exist
+            Path uploadPath = Paths.get(uploadDir);
+            Files.createDirectories(uploadPath);
+            
+            // Use Paths.get(uploadDir, storageFileName) for better path handling
+            Path destination = Paths.get(uploadDir, storageFileName);
+            logger.info("Saving logo to: {}", destination.toAbsolutePath().toString());
+            
+            Files.copy(inputStream, destination, StandardCopyOption.REPLACE_EXISTING);
+            return "http://localhost:8222/images" + '/' + storageFileName;
+        }
     }
 }

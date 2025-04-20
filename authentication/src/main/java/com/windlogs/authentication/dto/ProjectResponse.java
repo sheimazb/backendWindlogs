@@ -26,4 +26,5 @@ public class ProjectResponse {
     private String documentationLink;
     private boolean isPayed;
     private LocalDateTime createdDate;
+    private String logo;
 }

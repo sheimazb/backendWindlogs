@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.util.StdConverter;
 
 import java.io.Serializable;
 import java.time.LocalDate;
@@ -12,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -32,7 +35,10 @@ public class Project implements Serializable {
 
     private String name;
     private String description;
+    
+    @JsonDeserialize(converter = TechnologiesConverter.class)
     private String technologies;
+    
     private String repositoryLink;
     private String primaryTag;
     private float progressPercentage;
@@ -40,6 +46,7 @@ public class Project implements Serializable {
     private Integer membersCount;
     private Boolean payed;
     private String tenant;
+    private String logo;
 
     @ElementCollection
     @CollectionTable(name = "project_documentation_urls", joinColumns = @JoinColumn(name = "project_id"))
@@ -157,5 +164,27 @@ public class Project implements Serializable {
     @Override
     public int hashCode() {
         return Objects.hash(id);
+    }
+
+    // Converter class to handle both string and array formats for technologies
+    public static class TechnologiesConverter extends StdConverter<Object, String> {
+        @Override
+        public String convert(Object value) {
+            if (value == null) {
+                return null;
+            }
+            
+            if (value instanceof String) {
+                return (String) value;
+            }
+            
+            if (value instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<String> list = (List<String>) value;
+                return list.stream().collect(Collectors.joining(", "));
+            }
+            
+            return value.toString();
+        }
     }
 }
