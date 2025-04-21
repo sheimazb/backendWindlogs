@@ -4,11 +4,9 @@ import com.windlogs.authentication.entity.*;
 import com.windlogs.authentication.repository.ProjectRepository;
 import com.windlogs.authentication.repository.UserRepository;
 import com.windlogs.authentication.repository.ProjectUserRepository;
-import com.windlogs.authentication.dto.ProjectMultipartRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,9 +38,6 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ProjectUserRepository projectUserRepository;
-    
-    @Value("${file.upload-dir:uploads/}")
-    private String uploadDir;
 
     /**
      * Retrieves a user by their ID.
@@ -59,11 +54,27 @@ public class ProjectService {
      * Creates a new project and saves it to the database.
      *
      * @param project the {@link Project} object to create
-     * @param logo
+     * @param logo the logo file to upload
      * @return the saved {@link Project} entity
      */
     public Project createProject(Project project, MultipartFile logo) {
         logger.info("Creating new project: {}", project.getName());
+        
+        // Process logo if provided
+        if (logo != null && !logo.isEmpty()) {
+            try {
+                String logoUrl = saveLogoFile(logo);
+                project.setLogo(logoUrl);
+                logger.info("Logo saved successfully at: {}", logoUrl);
+            } catch (IOException e) {
+                logger.error("Failed to save logo file: {}", e.getMessage());
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, 
+                    "Failed to save logo file: " + e.getMessage());
+            }
+        } else {
+            logger.info("No logo provided for project");
+        }
+        
         return projectRepository.save(project);
     }
 
@@ -94,7 +105,7 @@ public class ProjectService {
      *
      * @param id             the ID of the project to update
      * @param updatedProject the {@link Project} object containing updated fields
-     * @param logo
+     * @param logo          the logo file to upload (optional)
      * @return an {@link Optional} containing the updated {@link Project} if found, or empty if not
      */
     public Optional<Project> updateProject(Long id, Project updatedProject, MultipartFile logo) {
@@ -136,10 +147,41 @@ public class ProjectService {
                 existingProject.setAllowedRoles(updatedProject.getAllowedRoles());
             }
 
+            // Process logo if provided
+            if (logo != null && !logo.isEmpty()) {
+                try {
+                    String uploadDir = "public/images/";
+                    
+                    // Delete old logo if it exists
+                    if (existingProject.getLogo() != null && !existingProject.getLogo().isEmpty()) {
+                        // If the stored logo is not a URL, try to delete it locally
+                        if (!existingProject.getLogo().startsWith("http://") && !existingProject.getLogo().startsWith("https://")) {
+                            Path oldLogoPath = Paths.get(uploadDir, existingProject.getLogo());
+                            try {
+                                Files.delete(oldLogoPath);
+                                logger.info("Deleted old logo file: {}", oldLogoPath);
+                            } catch (Exception e) {
+                                logger.error("Failed to delete old logo: {}", e.getMessage());
+                            }
+                        } else {
+                            logger.info("Existing logo is a URL; skipping file deletion.");
+                        }
+                    }
+                    
+                    // Save new logo
+                    String logoUrl = saveLogoFile(logo);
+                    existingProject.setLogo(logoUrl);
+                    logger.info("Updated project logo to: {}", logoUrl);
+                } catch (IOException e) {
+                    logger.error("Failed to save logo file: {}", e.getMessage());
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, 
+                        "Failed to save logo file: " + e.getMessage());
+                }
+            }
+
             return projectRepository.save(existingProject);
         });
     }
-
 
     /**
      * Deletes a project by its ID.
@@ -283,6 +325,7 @@ public class ProjectService {
      * @throws IOException if the file cannot be saved
      */
     private String saveLogoFile(MultipartFile logoFile) throws IOException {
+        String uploadDir = "public/images/";
         Date createdDate = new Date();
         String storageFileName = createdDate.getTime() + "_" + logoFile.getOriginalFilename();
         
