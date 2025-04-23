@@ -12,3 +12,4 @@ EXPOSE 8083
 
 # Commande pour démarrer l'application Spring Boot
 ENTRYPOINT ["java", "-jar", "/app.jar"]
+
