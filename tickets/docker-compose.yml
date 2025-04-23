@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  postgresdb:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=tickets
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=0000
+    ports:
+      - 5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app-tickets:
+    depends_on:
+      - postgresdb
+    image: 192.168.1.127:8082/tickets:1.0.0
+    restart: on-failure
+    ports:
+      - 8083:8083
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgresdb:5432/tickets
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: 0000
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_DATABASE: POSTGRESQL
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      AUTHENTICATION_SERVICE_URL: http://host.docker.internal:8088
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://host.docker.internal:8761/eureka/
+    stdin_open: true
+    tty: true
+
+volumes:
+  pgdata:
