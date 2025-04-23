@@ -184,12 +184,18 @@ public class LogController {
                             log.setStackTrace(analysisResponse.getStackTrace());
                         }
                         if (analysisResponse.getAnalysis() != null) {
-                            // Convert Map to JSON string for storage
+                            // Set individual analysis fields
                             try {
-                                String analysisJson = objectMapper.writeValueAsString(analysisResponse.getAnalysis());
-                                log.setAnalysis(analysisJson);
+                                AnalysisInfo analysisInfo = objectMapper.convertValue(analysisResponse.getAnalysis(), AnalysisInfo.class);
+                                log.setAnalysisRootException(analysisInfo.getRootException());
+                                log.setAnalysisCause(analysisInfo.getCause());
+                                log.setAnalysisLocation(analysisInfo.getLocation());
+                                log.setAnalysisExceptionChain(analysisInfo.getExceptionChain());
+                                if (analysisInfo.getRecommendation() != null) {
+                                    log.setAnalysisRecommendation(objectMapper.writeValueAsString(analysisInfo.getRecommendation()));
+                                }
                             } catch (Exception e) {
-                                logger.warn("Failed to convert analysis to JSON: {}", e.getMessage());
+                                logger.warn("Failed to convert analysis to individual fields: {}", e.getMessage());
                             }
                         }
                     }
@@ -361,16 +367,22 @@ public class LogController {
         logDTO.setTag(log.getTag());
         logDTO.setStackTrace(log.getStackTrace());
         logDTO.setExceptionType(log.getExceptionType());
-        
-        // Convert analysis JSON string to AnalysisInfo object
-        if (log.getAnalysis() != null && !log.getAnalysis().isEmpty()) {
+
+        // Create AnalysisInfo from separate fields
+        AnalysisInfo analysisInfo = new AnalysisInfo();
+        analysisInfo.setRootException(log.getAnalysisRootException());
+        analysisInfo.setCause(log.getAnalysisCause());
+        analysisInfo.setLocation(log.getAnalysisLocation());
+        analysisInfo.setExceptionChain(log.getAnalysisExceptionChain());
+        if (log.getAnalysisRecommendation() != null) {
             try {
-                AnalysisInfo analysisInfo = objectMapper.readValue(log.getAnalysis(), AnalysisInfo.class);
-                logDTO.setAnalysis(analysisInfo);
+                ThrownInfo recommendation = objectMapper.readValue(log.getAnalysisRecommendation(), ThrownInfo.class);
+                analysisInfo.setRecommendation(recommendation);
             } catch (Exception e) {
-                logger.warn("Failed to parse analysis JSON: {}", e.getMessage());
+                logger.warn("Failed to parse recommendation JSON: {}", e.getMessage());
             }
         }
+        logDTO.setAnalysis(analysisInfo);
         
         return logDTO;
     }
