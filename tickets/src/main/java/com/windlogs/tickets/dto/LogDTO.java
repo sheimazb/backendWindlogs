@@ -24,5 +24,8 @@ public class LogDTO {
     private String containerId;
     private String containerName;
     private Double originalTimestamp;
+    private String stackTrace ;
+    private String exceptionType;
+    private AnalysisInfo analysis;
     private String tag;
 } 

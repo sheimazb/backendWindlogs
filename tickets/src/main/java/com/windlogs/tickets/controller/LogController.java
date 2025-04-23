@@ -8,6 +8,7 @@ import com.windlogs.tickets.service.AuthService;
 import com.windlogs.tickets.service.LogService;
 import com.windlogs.tickets.service.ProjectService;
 import com.windlogs.tickets.service.TicketService;
+import com.windlogs.tickets.service.ExceptionAnalyzerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -18,10 +19,9 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
 import com.windlogs.tickets.enums.LogSeverity;
 import com.windlogs.tickets.enums.LogType;
-import com.windlogs.tickets.enums.Status;
+import com.windlogs.tickets.service.ExceptionAnalyzerService.StackTraceAnalysisResponse;
 
 @RestController
 @RequestMapping("/api/v1/logs")
@@ -33,14 +33,23 @@ public class LogController {
     private final ObjectMapper objectMapper;
     private final TicketService ticketService;
     private final ProjectService projectService;
+    private final ExceptionAnalyzerService exceptionAnalyzerService;
 
-    public LogController(LogService logService, TicketService ticketService, AuthService authService, LogRepository logRepository, ObjectMapper objectMapper, ProjectService projectService) {
+    public LogController(
+            LogService logService, 
+            TicketService ticketService, 
+            AuthService authService, 
+            LogRepository logRepository, 
+            ObjectMapper objectMapper, 
+            ProjectService projectService,
+            ExceptionAnalyzerService exceptionAnalyzerService) {
         this.logService = logService;
         this.authService = authService;
         this.logRepository = logRepository;
         this.objectMapper = objectMapper;
         this.ticketService = ticketService;
         this.projectService = projectService;
+        this.exceptionAnalyzerService = exceptionAnalyzerService;
     }
 
     /**
@@ -161,6 +170,39 @@ public class LogController {
 
             String logTag = fluentdLog.getTag() != null ? fluentdLog.getTag() : "";
             log.setTag(logTag);
+
+            // Extract and analyze exception if the log contains one
+            if (fluentdLog.getMessage() != null && fluentdLog.getThrown() != null) {
+                // Extract stack trace from thrown.extendedStackTrace
+                String extendedStackTrace = fluentdLog.getThrown().getExtendedStackTrace();
+                if (extendedStackTrace != null) {
+                    StackTraceAnalysisResponse analysisResponse = exceptionAnalyzerService.analyzeStackTrace(extendedStackTrace);
+
+                    if (analysisResponse != null) {
+                        // Set the stack trace
+                        if (analysisResponse.getStackTrace() != null) {
+                            log.setStackTrace(analysisResponse.getStackTrace());
+                        }
+                        if (analysisResponse.getAnalysis() != null) {
+                            // Convert Map to JSON string for storage
+                            try {
+                                String analysisJson = objectMapper.writeValueAsString(analysisResponse.getAnalysis());
+                                log.setAnalysis(analysisJson);
+                            } catch (Exception e) {
+                                logger.warn("Failed to convert analysis to JSON: {}", e.getMessage());
+                            }
+                        }
+                    }
+                }
+
+                // Set exception type from thrown object if available
+                String exceptionType = fluentdLog.getThrown().getName();
+                if (exceptionType == null || exceptionType.isEmpty()) {
+                    exceptionType = exceptionAnalyzerService.analyzeException(fluentdLog.getMessage());
+                }
+                log.setExceptionType(exceptionType);
+                logger.info("Analyzed exception type: {}", exceptionType);
+            }
 
             if (logTag != null && !logTag.isEmpty()) {
                 try {
@@ -317,6 +359,18 @@ public class LogController {
         logDTO.setContainerName(log.getContainerName());
         logDTO.setOriginalTimestamp(log.getOriginalTimestamp());
         logDTO.setTag(log.getTag());
+        logDTO.setStackTrace(log.getStackTrace());
+        logDTO.setExceptionType(log.getExceptionType());
+        
+        // Convert analysis JSON string to AnalysisInfo object
+        if (log.getAnalysis() != null && !log.getAnalysis().isEmpty()) {
+            try {
+                AnalysisInfo analysisInfo = objectMapper.readValue(log.getAnalysis(), AnalysisInfo.class);
+                logDTO.setAnalysis(analysisInfo);
+            } catch (Exception e) {
+                logger.warn("Failed to parse analysis JSON: {}", e.getMessage());
+            }
+        }
         
         return logDTO;
     }

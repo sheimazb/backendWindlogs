@@ -28,6 +28,12 @@ spring:
       properties:
         spring.json.type.mapping: ticketP:com.windlogs.tickets.kafka.TicketP,logEvent:com.windlogs.tickets.kafka.LogEvent
 
+# Exception Analyzer Configuration
+exception:
+  analyzer:
+    api:
+      url: ${EXCEPTION_ANALYZER_URL:http://localhost:8000}
+
 # Eureka client configuration
 eureka:
   client:
