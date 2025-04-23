@@ -16,7 +16,7 @@ public class Comment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+//test
     @Column(columnDefinition = "TEXT")
     private String content;
 
