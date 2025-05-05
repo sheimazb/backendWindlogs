@@ -5,7 +5,7 @@ FROM openjdk:17-jdk-alpine
 ARG JAR_FILE
 
 # Copie dynamique du fichier JAR (passé en build arg)
-ADD ${JAR_FILE} app.jar
+COPY ${JAR_FILE} app.jar
 
 # Expose le port sur lequel l'application Spring Boot va écouter
 EXPOSE 8083
