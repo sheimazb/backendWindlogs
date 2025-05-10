@@ -51,16 +51,8 @@ public class Log {
     private String stackTrace;
     @Column(name = "exception_type")
     private String exceptionType;
-    @Column(name = "analysis_root_exception", columnDefinition = "TEXT")
-    private String analysisRootException;
-    @Column(name = "analysis_cause", columnDefinition = "TEXT")
-    private String analysisCause;
-    @Column(name = "analysis_location", columnDefinition = "TEXT")
-    private String analysisLocation;
-    @Column(name = "analysis_exception_chain", columnDefinition = "TEXT")
-    private String analysisExceptionChain;
-    @Column(name = "analysis_recommendation", columnDefinition = "TEXT")
-    private String analysisRecommendation;
+    @Column(name="analysis_ia", columnDefinition = "TEXT")
+    private String analysis;
     @OneToMany(mappedBy = "log", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Ticket> tickets = new ArrayList<>();
 
