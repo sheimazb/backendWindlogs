@@ -6,8 +6,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import lombok.extern.slf4j.Slf4j;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.util.StdConverter;
 import lombok.Data;
 import java.util.Map;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -51,6 +54,101 @@ public class ExceptionAnalyzerService {
         private String matchedFrom;
         @JsonProperty("model_used")
         private String modelUsed;
+    }
+
+    @Data
+    private static class LogRecommendationRequest {
+        @JsonProperty("log_message")
+        private String logMessage;
+        private Integer k;
+    }
+
+    /**
+     * Custom converter to handle "nan" values for Long fields
+     */
+    public static class SafeLongDeserializer extends StdConverter<String, Long> {
+        @Override
+        public Long convert(String value) {
+            if (value == null || value.isEmpty() || "nan".equalsIgnoreCase(value) || "null".equalsIgnoreCase(value)) {
+                return null;
+            }
+            try {
+                return Long.parseLong(value);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+    }
+
+    @Data
+    public static class SimilarLog {
+        @JsonProperty("log_id")
+        private Long logId;
+        
+        @JsonProperty("log_message")
+        private String logMessage;
+        
+        @JsonProperty("ticket_id")
+        private Long ticketId;
+        
+        @JsonProperty("error_type")
+        private String errorType;
+        
+        @JsonProperty("detected_types")
+        private List<String> detectedTypes;
+        
+        @JsonProperty("exception_types")
+        private List<String> exceptionTypes;
+        
+        @JsonProperty("solution_title")
+        private String solutionTitle;
+        
+        @JsonProperty("solution_content")
+        private String solutionContent;
+            
+        @JsonProperty("solution_author_user_id")
+        @JsonDeserialize(converter = SafeLongDeserializer.class)
+        private Long solutionAuthorUserId;
+
+        private String severity;
+        private String similarity;
+        
+        @JsonProperty("term_match")
+        private String termMatch;
+        
+        @JsonProperty("match_details")
+        private String matchDetails;
+    }
+
+    @Data
+    public static class QueryAnalysis {
+        @JsonProperty("detected_types")
+        private List<String> detectedTypes;
+        
+        private String severity;
+        
+        @JsonProperty("error_code")
+        private String errorCode;
+        
+        @JsonProperty("exception_types")
+        private List<String> exceptionTypes;
+        
+        @JsonProperty("term_count")
+        private Integer termCount;
+        
+        @JsonProperty("normalized_query")
+        private String normalizedQuery;
+    }
+
+    @Data
+    public static class LogRecommendationResponse {
+        @JsonProperty("similar_logs")
+        private List<SimilarLog> similarLogs;
+        
+        private String message;
+        
+        @JsonProperty("query_analysis")
+        private QueryAnalysis queryAnalysis;
     }
 
     public String analyzeException(String logMessage) {
@@ -125,6 +223,48 @@ public class ExceptionAnalyzerService {
             log.error("Failed to analyze stack trace", e);
             StackTraceAnalysisResponse errorResponse = new StackTraceAnalysisResponse();
             errorResponse.setError("Analysis failed: " + e.getMessage());
+            return errorResponse;
+        }
+    }
+    
+    public LogRecommendationResponse recommendSolutions(String logMessage, Integer k) {
+        try {
+            log.debug("Recommending solutions for log message: {}", logMessage.substring(0, Math.min(logMessage.length(), 100)));
+
+            String endpoint = apiUrl + "/recommend-solutions";
+
+            LogRecommendationRequest request = new LogRecommendationRequest();
+            request.setLogMessage(logMessage);
+            request.setK(k);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<LogRecommendationRequest> entity = new HttpEntity<>(request, headers);
+
+            ResponseEntity<LogRecommendationResponse> responseEntity = restTemplate.exchange(
+                    endpoint,
+                    HttpMethod.POST,
+                    entity,
+                    LogRecommendationResponse.class
+            );
+
+            LogRecommendationResponse response = responseEntity.getBody();
+
+            if (response != null) {
+                log.info("Log recommendations retrieved successfully. Found {} similar logs", 
+                        response.getSimilarLogs() != null ? response.getSimilarLogs().size() : 0);
+                return response;
+            }
+
+            log.warn("Received null response from recommendation API");
+            LogRecommendationResponse errorResponse = new LogRecommendationResponse();
+            errorResponse.setMessage("Received null response from API");
+            return errorResponse;
+
+        } catch (Exception e) {
+            log.error("Failed to recommend solutions for log message", e);
+            LogRecommendationResponse errorResponse = new LogRecommendationResponse();
+            errorResponse.setMessage("Recommendation failed: " + e.getMessage());
             return errorResponse;
         }
     }
