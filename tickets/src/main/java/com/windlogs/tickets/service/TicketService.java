@@ -1,16 +1,15 @@
 package com.windlogs.tickets.service;
 
-import com.windlogs.tickets.dto.SolutionDTO;
 import com.windlogs.tickets.dto.TicketDTO;
 import com.windlogs.tickets.dto.UserResponseDTO;
 import com.windlogs.tickets.entity.Log;
 import com.windlogs.tickets.entity.Ticket;
 import com.windlogs.tickets.enums.Status;
 import com.windlogs.tickets.exception.UnauthorizedException;
-import com.windlogs.tickets.feign.AuthenticationFeignClient;
 import com.windlogs.tickets.mapper.TicketMapper;
 import com.windlogs.tickets.repository.SolutionRepository;
 import com.windlogs.tickets.repository.TicketRepository;
+import jakarta.ws.rs.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +61,9 @@ public class TicketService {
         // Set the log reference
         ticket.setLog(log);
         
+        // Set initial status to TO_DO
+        ticket.setStatus(Status.TO_DO);
+        
         // Double-check tenant is set correctly after mapping
         if (ticket.getTenant() == null || !incomingTenant.equals(ticket.getTenant())) {
             logger.warn("Tenant was not correctly mapped. Expected: {}, Got: {}. Setting it explicitly.", 
@@ -96,8 +98,8 @@ public class TicketService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Tenant changed during mapping to DTO");
         }
         
-        logger.info("Ticket created successfully with ID: {}, tenant: {}, logId: {}", 
-                resultDTO.getId(), resultDTO.getTenant(), resultDTO.getLogId());
+        logger.info("Ticket created successfully with ID: {}, tenant: {}, logId: {}, status: {}", 
+                resultDTO.getId(), resultDTO.getTenant(), resultDTO.getLogId(), resultDTO.getStatus());
         
         return resultDTO;
     }
@@ -116,19 +118,61 @@ public class TicketService {
     public TicketDTO updateStatusTicket(Long ticketId, Status newStatus, String tenant) {
         logger.info("Request to update status of ticket ID {} for tenant '{}' to '{}'", ticketId, tenant, newStatus);
 
+        // Find the ticket
         Ticket ticket = ticketRepository.findByIdAndTenant(ticketId, tenant)
                 .orElseThrow(() -> {
                     logger.error("Ticket with ID {} not found for tenant '{}'", ticketId, tenant);
-                    return new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found");
+                    return new NotFoundException("Ticket not found");
                 });
 
-        ticket.setStatus(newStatus);
+        Status currentStatus = ticket.getStatus();
+        logger.info("Current ticket status: {}", currentStatus);
 
+        // Validate the status transition follows the correct workflow
+        if (!isValidStatusTransition(currentStatus, newStatus)) {
+            String errorMsg = String.format("Invalid status transition from %s to %s", currentStatus, newStatus);
+            logger.error(errorMsg);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, errorMsg);
+        }
+
+        ticket.setStatus(newStatus);
         Ticket updatedTicket = ticketRepository.save(ticket);
 
         logger.info("Ticket ID {} status updated to '{}'", ticketId, newStatus);
 
         return ticketMapper.toDTO(updatedTicket);
+    }
+
+    /**
+     * Validates if the status transition follows the correct workflow
+     * @param currentStatus The current status of the ticket
+     * @param newStatus The new status to transition to
+     * @return true if the transition is valid, false otherwise
+     */
+    private boolean isValidStatusTransition(Status currentStatus, Status newStatus) {
+        if (currentStatus == null || newStatus == null) {
+            return false;
+        }
+
+        switch (currentStatus) {
+            case TO_DO:
+                // From TO_DO, can only move to IN_PROGRESS
+                return newStatus == Status.IN_PROGRESS;
+            case IN_PROGRESS:
+                // From IN_PROGRESS, can only move to RESOLVED
+                return newStatus == Status.RESOLVED;
+            case RESOLVED:
+                // From RESOLVED, can only move to MERGED_TO_TEST
+                return newStatus == Status.MERGED_TO_TEST;
+            case MERGED_TO_TEST:
+                // From MERGED_TO_TEST, can only move to DONE
+                return newStatus == Status.DONE;
+            case DONE:
+                // Cannot change status once it's DONE
+                return false;
+            default:
+                return false;
+        }
     }
 
     public TicketDTO updateTicketWithTenantValidation(Long id, TicketDTO ticketDTO, String tenant) {
@@ -227,6 +271,13 @@ public class TicketService {
         
         // Assign the ticket
         ticket.setAssignedToUserId(assignedToUserId);
+        
+        // Update status to TO_DO when assigned to a developer
+        if ("DEVELOPER".equalsIgnoreCase(assignedUser.getRole())) {
+            ticket.setStatus(Status.TO_DO);
+            logger.info("Setting ticket status to TO_DO as it's assigned to a developer");
+        }
+        
         Ticket updatedTicket = ticketRepository.save(ticket);
         
         return ticketMapper.toDTO(updatedTicket);
