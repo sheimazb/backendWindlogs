@@ -60,6 +60,22 @@ spring:
             - RemoveRequestHeader=Cookie
             - RewritePath=/(?<segment>.*), /$\{segment}
             - AddRequestHeader=X-Forwarded-Prefix, /api/v1/solutions
+        - id: tickets-service-stats
+          uri: lb://TICKETS
+          predicates:
+            - Path=/api/v1/statistics/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RewritePath=/(?<segment>.*), /$\{segment}
+            - AddRequestHeader=X-Forwarded-Prefix, /api/v1/statistics
+        - id: tickets-service-comments
+          uri: lb://TICKETS
+          predicates:
+            - Path=/api/v1/comments/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - RewritePath=/(?<segment>.*), /$\{segment}
+            - AddRequestHeader=X-Forwarded-Prefix, /api/v1/comments
         - id: tickets-service-logs
           uri: lb://TICKETS
           predicates:
@@ -93,20 +109,7 @@ spring:
               - PUT
               - DELETE
               - OPTIONS
-            allowedHeaders:
-              - Authorization
-              - Content-Type
-              - X-Requested-With
-              - Accept
-              - Origin
-              - Access-Control-Request-Method
-              - Access-Control-Request-Headers
-              - Sec-WebSocket-Key
-              - Sec-WebSocket-Version
-              - Sec-WebSocket-Extensions
-              - Sec-WebSocket-Protocol
-              - Upgrade
-              - Connection
+            allowedHeaders: "*"
             maxAge: 3600  # Cache preflight requests for 1 hour
             allowCredentials: true
             exposedHeaders:
