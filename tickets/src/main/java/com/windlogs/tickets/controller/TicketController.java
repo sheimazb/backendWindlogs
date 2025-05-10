@@ -8,10 +8,14 @@ import com.windlogs.tickets.exception.UnauthorizedException;
 import com.windlogs.tickets.service.AuthService;
 import com.windlogs.tickets.service.SolutionService;
 import com.windlogs.tickets.service.TicketService;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -100,22 +104,96 @@ public class TicketController {
     }
 
     @PutMapping("/{ticketId}/status")
-    public ResponseEntity<TicketDTO> updateTicketStatus(
+    public ResponseEntity<?> updateTicketStatus(
             @PathVariable Long ticketId,
-            @RequestBody TicketDTO ticketDTO,
-            @RequestHeader("Authorization") String authorizationHeader)
-    {
-        UserResponseDTO user = authService.getAuthenticatedUser(authorizationHeader);
-        ticketDTO.setTenant(user.getTenant()); // Use tenant from token
-
-        TicketDTO updatedTicket = ticketService.updateStatusTicket(ticketId, ticketDTO.getStatus(), user.getTenant());
-
-        return updatedTicket != null ?
-                ResponseEntity.ok(updatedTicket) :
-                ResponseEntity.notFound().build();
+            @RequestParam Status newStatus,
+            @RequestHeader("Authorization") String authorizationHeader) {
+        try {
+            UserResponseDTO user = authService.getAuthenticatedUser(authorizationHeader);
+            String roleName = user.getRole() != null ? user.getRole().toUpperCase() : "UNKNOWN";
+            
+            if (!isStatusTransitionAllowed(roleName, newStatus)) {
+                String allowedStatuses;
+                switch (roleName) {
+                    case "MANAGER":
+                        allowedStatuses = "TO_DO, MERGED_TO_TEST";
+                        break;
+                    case "DEVELOPER":
+                        allowedStatuses = "IN_PROGRESS, RESOLVED";
+                        break;
+                    case "TESTER":
+                        allowedStatuses = "DONE";
+                        break;
+                    default:
+                        allowedStatuses = "none";
+                }
+                
+                String errorMessage = String.format(
+                    "You don't have permission to change the ticket to %s status. Users with %s role can only change to: %s", 
+                    newStatus, 
+                    roleName,
+                    allowedStatuses
+                );
+                
+                logger.warn("User {} with role {} attempted unauthorized status change to {}", 
+                    user.getEmail(), roleName, newStatus);
+                    
+                return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse(errorMessage));
+            }
+            
+            try {
+                TicketDTO updatedTicket = ticketService.updateStatusTicket(ticketId, newStatus, user.getTenant());
+                logger.info("Ticket {} status updated to {} by user {} with role {}", 
+                    ticketId, newStatus, user.getEmail(), roleName);
+                return ResponseEntity.ok(updatedTicket);
+            } catch (ResponseStatusException e) {
+                // This will catch validation errors from the service
+                logger.error("Status transition validation failed: {}", e.getReason());
+                return ResponseEntity
+                    .status(e.getStatusCode())
+                    .body(new ErrorResponse(e.getReason()));
+            }
+        } catch (UnauthorizedException e) {
+            return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Error updating ticket status", e);
+            return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("An error occurred while updating the ticket status."));
+        }
     }
 
+    private boolean isStatusTransitionAllowed(String userRole, Status newStatus) {
+        if (userRole == null) {
+            return false;
+        }
 
+        switch (userRole.toUpperCase()) {
+            case "MANAGER":
+                // Managers can assign tickets and move from RESOLVED to MERGED_TO_TEST
+                return newStatus == Status.TO_DO || 
+                       newStatus == Status.MERGED_TO_TEST;
+            case "DEVELOPER":
+                // Developers can change to IN_PROGRESS and RESOLVED
+                return newStatus == Status.IN_PROGRESS || 
+                       newStatus == Status.RESOLVED;
+            case "TESTER":
+                // Testers can mark as DONE after testing
+                return newStatus == Status.DONE;
+            default:
+                return false;
+        }
+    }
+
+    @Data
+    @AllArgsConstructor
+    private static class ErrorResponse {
+        private String message;
+    }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTicket(@PathVariable Long id, @RequestHeader("Authorization") String authorizationHeader) {
