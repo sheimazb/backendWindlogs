@@ -2,8 +2,9 @@ package com.windlogs.tickets.enums;
 
 
 public enum Status {
-    PENDING,
+    TO_DO,
+    IN_PROGRESS,
     RESOLVED,
-    VERIFIED,
-    MERGED
+    MERGED_TO_TEST,
+    DONE
 }
