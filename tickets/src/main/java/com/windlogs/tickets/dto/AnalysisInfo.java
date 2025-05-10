@@ -3,6 +3,7 @@ package com.windlogs.tickets.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import java.util.List;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -12,6 +13,6 @@ public class AnalysisInfo {
     private String cause;
     private String location;
     @JsonProperty("exception_chain")
-    private String exceptionChain;
-    private ThrownInfo recommendation;
+    private List<String> exceptionChain;
+    private String recommendation;
 }
