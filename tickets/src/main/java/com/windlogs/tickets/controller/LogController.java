@@ -125,11 +125,6 @@ public class LogController {
         return ResponseEntity.ok(logDTOs);
     }
 
-    /**
-     * Create a new log using fluentd data
-     * @param rawJsonBody The log to create
-     * @return The created log
-     */
     @PostMapping(
             value = "/fluentd",
             consumes = {"application/json", "application/x-ndjson", "application/x-ndjson;charset=UTF-8", "text/plain", "*/*"}
@@ -186,17 +181,10 @@ public class LogController {
                         if (analysisResponse.getAnalysis() != null) {
                             // Set individual analysis fields
                             try {
-                                AnalysisInfo analysisInfo = objectMapper.convertValue(analysisResponse.getAnalysis(), AnalysisInfo.class);
-                                log.setAnalysisRootException(analysisInfo.getRootException());
-                                log.setAnalysisCause(analysisInfo.getCause());
-                                log.setAnalysisLocation(analysisInfo.getLocation());
-                                log.setAnalysisExceptionChain(analysisInfo.getExceptionChain());
-                                if (analysisInfo.getRecommendation() != null) {
-                                    log.setAnalysisRecommendation(objectMapper.writeValueAsString(analysisInfo.getRecommendation()));
-                                }
+                                String analysisJson = objectMapper.writeValueAsString(analysisResponse.getAnalysis());
+                                log.setAnalysis(analysisJson);
                             } catch (Exception e) {
-                                logger.warn("Failed to convert analysis to individual fields: {}", e.getMessage());
-                            }
+                                logger.warn("Failed to convert analysis to JSON: {}", e.getMessage());  }
                         }
                     }
                 }
@@ -297,9 +285,7 @@ public class LogController {
             ));
         }
     }
-    /**
-     * Determine LogType from string level
-     */
+
     private LogType determineLogType(String level) {
         if (level == null) return LogType.INFO;
 
@@ -311,9 +297,6 @@ public class LogController {
         }
     }
 
-    /**
-     * Determine LogSeverity from string level
-     */
     private LogSeverity determineLogSeverity(String level) {
         if (level == null) return LogSeverity.LOW;
 
@@ -329,9 +312,6 @@ public class LogController {
         }
     }
 
-    /**
-     * Extract tenant from container name
-     */
     private String extractTenant(String containerName) {
         if (containerName == null || !containerName.startsWith("/")) {
             return "default";
@@ -341,11 +321,6 @@ public class LogController {
         return parts.length > 0 ? parts[0] : "default";
     }
 
-    /**
-     * Convert a Log entity to a LogDTO
-     * @param log The log entity
-     * @return The log DTO
-     */
     private LogDTO convertToDTO(Log log) {
         LogDTO logDTO = new LogDTO();
         logDTO.setId(log.getId());
@@ -367,23 +342,19 @@ public class LogController {
         logDTO.setTag(log.getTag());
         logDTO.setStackTrace(log.getStackTrace());
         logDTO.setExceptionType(log.getExceptionType());
-
-        // Create AnalysisInfo from separate fields
-        AnalysisInfo analysisInfo = new AnalysisInfo();
-        analysisInfo.setRootException(log.getAnalysisRootException());
-        analysisInfo.setCause(log.getAnalysisCause());
-        analysisInfo.setLocation(log.getAnalysisLocation());
-        analysisInfo.setExceptionChain(log.getAnalysisExceptionChain());
-        if (log.getAnalysisRecommendation() != null) {
+        if (log.getAnalysis() != null && !log.getAnalysis().isEmpty()) {
             try {
-                ThrownInfo recommendation = objectMapper.readValue(log.getAnalysisRecommendation(), ThrownInfo.class);
-                analysisInfo.setRecommendation(recommendation);
+                logger.info("Converting analysis for log ID: {}. Raw analysis: {}", log.getId(), log.getAnalysis());
+                AnalysisInfo analysisInfo = objectMapper.readValue(log.getAnalysis(), AnalysisInfo.class);
+                logDTO.setAnalysis(analysisInfo);
+                logger.info("Successfully converted analysis for log ID: {}. Converted object: {}", log.getId(), analysisInfo);
             } catch (Exception e) {
-                logger.warn("Failed to parse recommendation JSON: {}", e.getMessage());
+                logger.error("Failed to parse analysis JSON for log ID: {}. Error: {}. Raw analysis: {}", 
+                    log.getId(), e.getMessage(), log.getAnalysis(), e);
             }
+        } else {
+            logger.debug("No analysis found for log ID: {}", log.getId());
         }
-        logDTO.setAnalysis(analysisInfo);
-        
         return logDTO;
     }
 }
