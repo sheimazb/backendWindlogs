@@ -121,6 +121,10 @@ public class UserService {
         return userRepository.findByEmail(email).map(this::convertToProfileResponse);
     }
 
+    public Optional<ProfileResponse> getUserById(Long id){
+        return userRepository.findById(id).map(this::convertToProfileResponse);
+    }
+
     private ProfileResponse convertToProfileResponse(User user) {
         return ProfileResponse.builder()
                 .firstname(user.getFirstname())
