@@ -48,6 +48,19 @@ public class Project implements Serializable {
     private String tenant;
     private String logo;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "project_type")
+    private ProjectType projectType = ProjectType.MONOLITHIC;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_project_id")
+    @JsonIgnoreProperties({"subProjects", "projectUsers", "creator"})
+    private Project parentProject;
+
+    @OneToMany(mappedBy = "parentProject", cascade = CascadeType.ALL, orphanRemoval = false)
+    @JsonIgnoreProperties({"parentProject", "projectUsers", "creator"})
+    private List<Project> subProjects = new ArrayList<>();
+
     @ElementCollection
     @CollectionTable(name = "project_documentation_urls", joinColumns = @JoinColumn(name = "project_id"))
     @Column(name = "documentation_url")
@@ -82,6 +95,20 @@ public class Project implements Serializable {
     private void validateAndInitialize() {
         if (creator != null && !creator.getTenant().equals(tenant)) {
             throw new IllegalStateException("Project tenant must match creator's tenant");
+        }
+
+        // Validate project type and relationships
+        if (projectType == ProjectType.MICROSERVICES_PACKAGE && !subProjects.isEmpty()) {
+            subProjects.forEach(subProject -> {
+                if (subProject.getProjectType() != ProjectType.MICROSERVICES) {
+                    throw new IllegalStateException("Microservices package can only contain microservice projects");
+                }
+            });
+        }
+
+        if (projectType == ProjectType.MICROSERVICES && parentProject != null 
+            && parentProject.getProjectType() != ProjectType.MICROSERVICES_PACKAGE) {
+            throw new IllegalStateException("Microservice project must belong to a microservices package");
         }
 
         // Initialize collections if null

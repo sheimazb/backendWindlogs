@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 /**
  * Service class responsible for managing projects and their associated users.
@@ -39,27 +40,39 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final ProjectUserRepository projectUserRepository;
 
-    /**
-     * Retrieves a user by their ID.
-     *
-     * @param id the ID of the user to retrieve
-     * @return an {@link Optional} containing the {@link User} if found, or empty if not
-     */
+
     public Optional<User> getUserById(Long id) {
         logger.info("Fetching user with ID: {}", id);
         return userRepository.findById(id);
     }
-
-    /**
-     * Creates a new project and saves it to the database.
-     *
-     * @param project the {@link Project} object to create
-     * @param logo the logo file to upload
-     * @return the saved {@link Project} entity
-     */
     public Project createProject(Project project, MultipartFile logo) {
-        logger.info("Creating new project: {}", project.getName());
-        
+        logger.info("Creating new project: {} of type: {}", project.getName(), project.getProjectType());
+
+        // Check if primary tag already exists
+        if (projectRepository.existsByPrimaryTag(project.getPrimaryTag())) {
+            logger.warn("Primary tag '{}' already exists", project.getPrimaryTag());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Primary tag already exists. Please choose a different one.");
+        }
+
+        // If it's a microservice, load and set the parent project
+        if (project.getProjectType() == ProjectType.MICROSERVICES) {
+            Long parentId = project.getParentProject() != null ? project.getParentProject().getId() : null;
+            if (parentId != null) {
+                Project parentProject = projectRepository.findById(parentId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, 
+                        "Parent project not found with id: " + parentId));
+                project.setParentProject(parentProject);
+                
+                // Important: clear the subProjects collection to avoid the orphanRemoval issue
+                // We're not managing the parent's subProjects here; we're just setting the child's reference
+                project.setSubProjects(new ArrayList<>());
+            }
+        }
+
+        // Validate project type and relationships
+        validateProjectTypeAndRelationships(project);
+
         // Process logo if provided
         if (logo != null && !logo.isEmpty()) {
             try {
@@ -67,7 +80,7 @@ public class ProjectService {
                 project.setLogo(logoUrl);
                 logger.info("Logo saved successfully at: {}", logoUrl);
             } catch (IOException e) {
-                logger.error("Failed to save logo file: {}", e.getMessage());
+                logger.error("Failed to save project logo file: {}", e.getMessage());
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, 
                     "Failed to save logo file: " + e.getMessage());
             }
@@ -75,39 +88,103 @@ public class ProjectService {
             logger.info("No logo provided for project");
         }
         
-        return projectRepository.save(project);
+        // Save the project
+        Project savedProject = projectRepository.save(project);
+        
+        // If this is a microservice, update the parent's subProjects collection separately
+        if (project.getProjectType() == ProjectType.MICROSERVICES && project.getParentProject() != null) {
+            try {
+                logger.info("Updating parent package's subProjects collection");
+                Project parentProject = projectRepository.findById(project.getParentProject().getId()).orElse(null);
+                if (parentProject != null) {
+                    // No need to save, just returning the project
+                    logger.info("Successfully linked microservice to parent package");
+                }
+            } catch (Exception e) {
+                logger.warn("Non-critical error updating parent's subProjects: {}", e.getMessage());
+                // Don't throw here as the microservice itself was already created
+            }
+        }
+        
+        return savedProject;
     }
 
-    /**
-     * Retrieves a project by its ID.
-     *
-     * @param id the ID of the project to retrieve
-     * @return an {@link Optional} containing the {@link Project} if found, or empty if not
-     */
+    private void validateProjectTypeAndRelationships(Project project) {
+        logger.info("Validating project type {} and relationships", project.getProjectType());
+        
+        switch (project.getProjectType()) {
+            case MICROSERVICES:
+                if (project.getParentProject() == null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Microservice project must belong to a microservices package");
+                }
+                Project parent = projectRepository.findById(project.getParentProject().getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Parent project not found"));
+                if (parent.getProjectType() != ProjectType.MICROSERVICES_PACKAGE) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Parent project must be a microservices package");
+                }
+                break;
+
+            case MICROSERVICES_PACKAGE:
+                if (project.getParentProject() != null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Microservices package cannot have a parent project");
+                }
+                break;
+
+            case MONOLITHIC:
+                if (project.getParentProject() != null) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Monolithic project cannot have a parent project");
+                }
+                break;
+        }
+    }
+
     public Optional<Project> getProjectById(Long id) {
         logger.info("Fetching project with ID: {}", id);
-        return projectRepository.findById(id);
+        Optional<Project> projectOpt = projectRepository.findById(id);
+        
+        projectOpt.ifPresent(project -> {
+            // For microservices package, eagerly fetch sub-projects
+            if (project.getProjectType() == ProjectType.MICROSERVICES_PACKAGE) {
+                logger.info("Fetching sub-projects for microservices package: {}", project.getName());
+                List<Project> subProjects = projectRepository.findByParentProjectId(id);
+                project.setSubProjects(subProjects);
+            }
+            
+            // For microservice, ensure parent project is loaded
+            if (project.getProjectType() == ProjectType.MICROSERVICES && project.getParentProject() != null) {
+                logger.info("Fetching parent project for microservice: {}", project.getName());
+                projectRepository.findById(project.getParentProject().getId())
+                    .ifPresent(parent -> project.setParentProject(parent));
+            }
+        });
+        
+        return projectOpt;
     }
 
-    /**
-     * Retrieves all projects associated with a specific tenant.
-     *
-     * @param tenant the tenant identifier to filter projects by
-     * @return a {@link List} of {@link Project} objects for the specified tenant
-     */
     public List<Project> getAllProjectsByTenant(String tenant) {
         logger.info("Fetching all projects for tenant: {}", tenant);
-        return projectRepository.findByTenant(tenant);
+        List<Project> projects = projectRepository.findByTenant(tenant);
+        
+        // Process each project to load its relationships
+        projects.forEach(project -> {
+            if (project.getProjectType() == ProjectType.MICROSERVICES_PACKAGE) {
+                List<Project> subProjects = projectRepository.findByParentProjectId(project.getId());
+                project.setSubProjects(subProjects);
+            }
+            if (project.getProjectType() == ProjectType.MICROSERVICES && project.getParentProject() != null) {
+                projectRepository.findById(project.getParentProject().getId())
+                    .ifPresent(parent -> project.setParentProject(parent));
+            }
+        });
+        
+        return projects;
     }
 
-    /**
-     * Updates an existing project with the provided details.
-     *
-     * @param id             the ID of the project to update
-     * @param updatedProject the {@link Project} object containing updated fields
-     * @param logo          the logo file to upload (optional)
-     * @return an {@link Optional} containing the updated {@link Project} if found, or empty if not
-     */
     public Optional<Project> updateProject(Long id, Project updatedProject, MultipartFile logo) {
         logger.info("Updating project with ID: {}", id);
 
@@ -127,7 +204,7 @@ public class ProjectService {
             if (updatedProject.getPrimaryTag() != null) {
                 existingProject.setPrimaryTag(updatedProject.getPrimaryTag());
             }
-            Optional.ofNullable(updatedProject.getProgressPercentage()).ifPresent(existingProject::setProgressPercentage);
+            Optional.of(updatedProject.getProgressPercentage()).ifPresent(existingProject::setProgressPercentage);
             if (updatedProject.getDeadlineDate() != null) {
                 existingProject.setDeadlineDate(updatedProject.getDeadlineDate());
             }
@@ -183,48 +260,21 @@ public class ProjectService {
         });
     }
 
-    /**
-     * Deletes a project by its ID.
-     *
-     * @param id the ID of the project to delete
-     */
     public void deleteProject(Long id) {
         logger.info("Deleting project with ID: {}", id);
         projectRepository.deleteById(id);
     }
 
-    /**
-     * Searches for projects by a specific tag and tenant.
-     *
-     * @param tag the tag to search for within project tags
-     * @param tenant the tenant identifier to filter projects by
-     * @return a {@link List} of {@link Project} objects matching the tag and tenant
-     */
     public List<Project> findProjectsByTagAndTenant(String tag, String tenant) {
         logger.info("Searching projects with tag: {} for tenant: {}", tag, tenant);
         return projectRepository.findByTagsContainingAndTenant(tag, tenant);
     }
 
-    /**
-     * Retrieves projects by their primary tag.
-     *
-     * @param primaryTag the primary tag to filter projects by
-     * @return a {@link List} of {@link Project} objects with the specified primary tag
-     */
     public List<Project> findProjectsByPrimaryTag(String primaryTag) {
         logger.info("Searching projects with primary tag: {}", primaryTag);
         return projectRepository.findByPrimaryTag(primaryTag);
     }
 
-    /**
-     * Adds a user to a project and updates the project's member count.
-     *
-     * @param projectId the ID of the project to add the user to
-     * @param userId the ID of the user to add
-     * @return the updated {@link Project} entity
-     * @throws IllegalArgumentException if the project or user is not found, or if the user is already a member
-     * @throws IllegalStateException if there is an error adding the user to the project
-     */
     @Transactional
     public Project addUserToProject(Long projectId, Long userId) {
         logger.info("Adding user {} to project {}", userId, projectId);
@@ -261,14 +311,6 @@ public class ProjectService {
         }
     }
 
-    /**
-     * Removes a user from a project and updates the project's member count.
-     *
-     * @param projectId the ID of the project to remove the user from
-     * @param userId the ID of the user to remove
-     * @return the updated {@link Project} entity
-     * @throws IllegalArgumentException if the project or user is not found
-     */
     public Project removeUserFromProject(Long projectId, Long userId) {
         logger.info("Removing user {} from project {}", userId, projectId);
         
@@ -282,13 +324,6 @@ public class ProjectService {
         return projectRepository.save(project);
     }
 
-    /**
-     * Retrieves all users associated with a project.
-     *
-     * @param projectId the ID of the project to query
-     * @return a {@link Set} of {@link User} objects associated with the project
-     * @throws IllegalArgumentException if the project is not found
-     */
     public Set<User> getProjectUsers(Long projectId) {
         logger.info("Getting users for project {}", projectId);
         
@@ -300,13 +335,6 @@ public class ProjectService {
                 .collect(Collectors.toSet());
     }
 
-    /**
-     * Retrieves all projects associated with a user.
-     *
-     * @param userId the ID of the user to query
-     * @return a {@link Set} of {@link Project} objects associated with the user
-     * @throws IllegalArgumentException if the user is not found
-     */
     public Set<Project> getProjectsUser(Long userId){
         logger.info("Getting projects for users {}",userId);
         User user = userRepository.findById(userId)
@@ -317,13 +345,6 @@ public class ProjectService {
                 .collect(Collectors.toSet());
     }
 
-    /**
-     * Helper method to save a logo file to disk and return its URL
-     *
-     * @param logoFile the MultipartFile to save
-     * @return the URL where the file can be accessed
-     * @throws IOException if the file cannot be saved
-     */
     private String saveLogoFile(MultipartFile logoFile) throws IOException {
         String uploadDir = "public/images/";
         Date createdDate = new Date();
@@ -336,10 +357,44 @@ public class ProjectService {
             
             // Use Paths.get(uploadDir, storageFileName) for better path handling
             Path destination = Paths.get(uploadDir, storageFileName);
-            logger.info("Saving logo to: {}", destination.toAbsolutePath().toString());
+            logger.info("Saving logo to: {}", destination.toAbsolutePath());
             
             Files.copy(inputStream, destination, StandardCopyOption.REPLACE_EXISTING);
             return "http://localhost:8222/images" + '/' + storageFileName;
         }
+    }
+
+    @Transactional
+    public Project addMicroserviceToPackage(Long packageId, Project microservice) {
+        logger.info("Adding microservice {} to package {}", microservice.getName(), packageId);
+
+        Project packageProject = projectRepository.findById(packageId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, 
+                    "Microservices package not found"));
+
+        if (packageProject.getProjectType() != ProjectType.MICROSERVICES_PACKAGE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Target project is not a microservices package");
+        }
+
+        microservice.setProjectType(ProjectType.MICROSERVICES);
+        microservice.setParentProject(packageProject);
+        packageProject.getSubProjects().add(microservice);
+
+        return projectRepository.save(packageProject);
+    }
+
+    public List<Project> getMicroservicesForPackage(Long packageId) {
+        logger.info("Fetching microservices for package ID: {}", packageId);
+        Project packageProject = projectRepository.findById(packageId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, 
+                "Microservices package not found"));
+
+        if (packageProject.getProjectType() != ProjectType.MICROSERVICES_PACKAGE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Specified project is not a microservices package");
+        }
+
+        return projectRepository.findByParentProjectId(packageId);
     }
 }

@@ -5,6 +5,7 @@ import com.windlogs.authentication.dto.UserProfileDto.ProfileResponse;
 import com.windlogs.authentication.service.UserService;
 import com.windlogs.authentication.entity.User;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.codec.language.bm.Lang;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -71,5 +72,12 @@ public class UserController {
         Optional<ProfileResponse> user = userService.getUserDetailsByEmail(email);
         return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
-
+    
+    @GetMapping("/id/{id}")
+    public ResponseEntity<ProfileResponse> getUserById(
+            @PathVariable Long id
+    ) {
+        Optional<ProfileResponse> user = userService.getUserById(id);
+        return user.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    }
 }

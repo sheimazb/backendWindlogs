@@ -1,11 +1,13 @@
 package com.windlogs.authentication.dto;
 
 import com.windlogs.authentication.entity.Project;
+import com.windlogs.authentication.entity.ProjectType;
 import com.windlogs.authentication.entity.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
@@ -30,8 +32,15 @@ public class ProjectRequestDTO {
     private String repositoryLink;
     private String primaryTag;
     private Float progressPercentage;
+    
+    @DateTimeFormat(pattern = "yyyy-MM-dd")
     private LocalDate deadlineDate;
+    
     private Boolean payed;
+    
+    // Project architecture type
+    private ProjectType projectType = ProjectType.MONOLITHIC;
+    private Long parentProjectId; // For microservices projects
     
     // Collections
     private List<String> documentationUrls;
@@ -51,6 +60,18 @@ public class ProjectRequestDTO {
         Project project = new Project();
         project.setName(name);
         project.setDescription(description);
+        
+        // Set project type
+        if (projectType != null) {
+            project.setProjectType(projectType);
+        }
+        
+        // Set parent project reference if provided
+        if (parentProjectId != null) {
+            Project parentProject = new Project();
+            parentProject.setId(parentProjectId);
+            project.setParentProject(parentProject);
+        }
         
         // Handle technologies (either direct string or array)
         if (technologies != null) {
