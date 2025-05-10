@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "comments")
@@ -16,7 +18,7 @@ public class Comment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-//test
+
     @Column(columnDefinition = "TEXT")
     private String content;
 
@@ -30,6 +32,15 @@ public class Comment {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
+    // Store just the IDs of mentioned users
+    @ElementCollection
+    @CollectionTable(
+        name = "comment_mentions", 
+        joinColumns = @JoinColumn(name = "comment_id")
+    )
+    @Column(name = "mentioned_user_id")
+    private Set<Long> mentionedUserIds = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {
