@@ -65,6 +65,16 @@
 			<artifactId>micrometer-tracing-bridge-brave</artifactId>
 		</dependency>
 	</dependencies>
+
+<distributionManagement>
+		<repository>
+			<id>deploymentRepo</id>
+			<name>Nexus Repository</name>
+			<url>http://192.168.1.192:8081/repository/maven-releases/</url>
+		</repository>
+	</distributionManagement>
+
+	
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
