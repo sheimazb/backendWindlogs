@@ -187,7 +187,10 @@ public class LogService {
                     log.getId().toString(),
                     log.getContainerName() != null ? log.getContainerName() : "windlogs",
                     timestamp,
-                    userEmail  // Send the user email from the ticket
+                    userEmail,  // Send the user email from the ticket
+                    log.getId(), // sourceId - using log ID
+                    "LOG",      // sourceType - this is a log notification
+                    "system@windlogs.com" // senderEmail - system generated logs
             );
 
             // Send the event
