@@ -7,8 +7,34 @@ spring:
     active: dev
   servlet:
     multipart:
+      enabled: true
       max-file-size: 10MB
       max-request-size: 10MB
+      resolve-lazily: true
+      location: ${java.io.tmpdir}
+  # Fallback Kafka configuration (will be overridden by config server if available)
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      properties:
+        # Use the tickets package for serialization
+        spring.json.type.mapping: COMMENT:com.windlogs.tickets.kafka.CommentEvent,SOLUTION:com.windlogs.tickets.kafka.SolutionEvent
+        # Enable type headers for deserialization
+        spring.json.add.type.headers: true
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+  main:
+    allow-bean-definition-overriding: true
+
+# Enable debug logging for Kafka
+logging:
+  level:
+    org.springframework.kafka: DEBUG
+    org.apache.kafka: DEBUG
+    com.windlogs.tickets.kafka: DEBUG
+
 springdoc:
   default-produces-media-type: application/json
 server:

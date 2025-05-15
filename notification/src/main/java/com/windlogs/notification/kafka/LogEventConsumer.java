@@ -39,17 +39,19 @@ public class LogEventConsumer {
     )
     public void consumeLogEvent(TicketsLogEvent ticketsLogEvent) {
         log.info("==================== START LOG EVENT PROCESSING ====================");
-        log.info("Received log data from Fluentd via Kafka: level={}, message={}, container_id={}, container_name={}", 
+        log.info("Received log data from Fluentd via Kafka: level={}, message={}, container_id={}, container_name={}, sourceType={}, sourceId={}", 
                 ticketsLogEvent.getLevel(), ticketsLogEvent.getMessage(), 
-                ticketsLogEvent.getContainer_id(), ticketsLogEvent.getContainer_name());
+                ticketsLogEvent.getContainer_id(), ticketsLogEvent.getContainer_name(),
+                ticketsLogEvent.getSourceType(), ticketsLogEvent.getSourceId());
         
         try {
             // Convert to our internal LogEvent format
             LogEvent logEvent = ticketsLogEvent.toLogEvent();
             
-            log.info("Converted to LogEvent: logId={}, type={}, severity={}, projectId={}, tenant={}, class_name={}, recipientEmail={}", 
+            log.info("Converted to LogEvent: logId={}, type={}, severity={}, projectId={}, tenant={}, class_name={}, recipientEmail={}, sourceType={}, sourceId={}, senderEmail={}", 
                     logEvent.logId(), logEvent.type(), logEvent.severity(), 
-                    logEvent.projectId(), logEvent.tenant(), logEvent.class_name(), logEvent.recipientEmail());
+                    logEvent.projectId(), logEvent.tenant(), logEvent.class_name(), logEvent.recipientEmail(),
+                    logEvent.sourceType(), logEvent.sourceId(), logEvent.senderEmail());
             
             // Use the recipient email directly from the LogEvent
             String recipientEmail = logEvent.recipientEmail();
@@ -57,7 +59,7 @@ public class LogEventConsumer {
             if (recipientEmail == null || recipientEmail.isEmpty()) {
                 log.warn("No recipient email in LogEvent, will try to find a suitable recipient");
                 
-                // Approach 1: If projectId is available, try to get the project manager's email
+                // If projectId is available, try to get the project manager's email
                 if (logEvent.projectId() != null && logEvent.projectId() > 0) {
                     log.info("Log is associated with project ID: {}", logEvent.projectId());
                     
@@ -71,7 +73,7 @@ public class LogEventConsumer {
                     }
                 }
                 
-                // Approach 2: If no project manager, try tenant managers
+                //If no project manager, try tenant managers
                 if (recipientEmail == null && logEvent.tenant() != null && !logEvent.tenant().isEmpty() && !"default".equals(logEvent.tenant())) {
                     log.info("Getting managers for tenant: '{}'", logEvent.tenant());
                     List<String> managerEmails = userService.getUserEmailsByTenant(logEvent.tenant());
@@ -84,7 +86,7 @@ public class LogEventConsumer {
                     }
                 }
                 
-                // Approach 3: Fallback to default admin email if no recipient found
+                // Fallback to default admin email if no recipient found
                 if (recipientEmail == null || recipientEmail.isEmpty()) {
                     recipientEmail = "admin@windlogs.com";
                     log.warn("No suitable recipient found, using default admin email: {}", recipientEmail);
@@ -93,8 +95,16 @@ public class LogEventConsumer {
                 log.info("Using recipient email from LogEvent: {}", recipientEmail);
             }
             
-            // Always create the notification
-            createNotificationForManager(logEvent, recipientEmail);
+            // Create notification based on source type
+            if ("COMMENT".equals(logEvent.sourceType())) {
+                createCommentNotification(logEvent, recipientEmail);
+            } else if ("SOLUTION".equals(logEvent.sourceType())) {
+                createSolutionNotification(logEvent, recipientEmail);
+            } else {
+                // Default to log notification for other types or when sourceType is null
+                createLogNotification(logEvent, recipientEmail);
+            }
+            
             log.info("==================== END LOG EVENT PROCESSING ====================");
             
         } catch (Exception e) {
@@ -106,17 +116,87 @@ public class LogEventConsumer {
     }
     
     /**
-     * Create a notification for a manager about a log
+     * Create a notification for a comment
      * @param logEvent The log event
-     * @param managerEmail The manager's email
+     * @param recipientEmail The recipient's email
      */
-    private void createNotificationForManager(LogEvent logEvent, String managerEmail) {
+    private void createCommentNotification(LogEvent logEvent, String recipientEmail) {
+        try {
+            // Create a notification for a new comment
+            String subject = "New Comment Added";
+            String message = logEvent.description();
+            
+            log.info("Creating comment notification for recipient: {}", recipientEmail);
+            
+            Notification notification = Notification.builder()
+                    .subject(subject.length() > 200 ? subject.substring(0, 200) : subject)
+                    .message(message.length() > 200 ? message.substring(0, 200) : message)
+                    .sourceType("COMMENT")
+                    .sourceId(logEvent.sourceId())
+                    .tenant(logEvent.tenant())
+                    .recipientEmail(recipientEmail)
+                    .senderEmail(logEvent.senderEmail())
+                    .actionType("COMMENT_ADDED")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            
+            // Save the notification
+            notificationService.createNotification(notification);
+            log.info("Comment notification created for comment ID: {}, tenant: {}, recipient: {}", 
+                    logEvent.sourceId(), logEvent.tenant(), recipientEmail);
+        } catch (Exception e) {
+            log.error("Error creating comment notification: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Create a notification for a solution
+     * @param logEvent The log event
+     * @param recipientEmail The recipient's email
+     */
+    private void createSolutionNotification(LogEvent logEvent, String recipientEmail) {
+        try {
+            // Create a notification for a new solution
+            String subject = "Solution Added to Ticket";
+            String message = logEvent.description();
+            
+            log.info("Creating solution notification for recipient: {}", recipientEmail);
+            
+            Notification notification = Notification.builder()
+                    .subject(subject.length() > 200 ? subject.substring(0, 200) : subject)
+                    .message(message.length() > 200 ? message.substring(0, 200) : message)
+                    .sourceType("SOLUTION")
+                    .sourceId(logEvent.sourceId())
+                    .tenant(logEvent.tenant())
+                    .recipientEmail(recipientEmail)
+                    .senderEmail(logEvent.senderEmail())
+                    .actionType("SOLUTION_ADDED")
+                    .read(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            
+            // Save the notification
+            notificationService.createNotification(notification);
+            log.info("Solution notification created for solution ID: {}, tenant: {}, recipient: {}", 
+                    logEvent.sourceId(), logEvent.tenant(), recipientEmail);
+        } catch (Exception e) {
+            log.error("Error creating solution notification: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Create a notification for a log event
+     * @param logEvent The log event
+     * @param recipientEmail The recipient's email
+     */
+    private void createLogNotification(LogEvent logEvent, String recipientEmail) {
         try {
             // Create a very simple notification
             String subject = "Alert: Error in " + logEvent.class_name();
             String message = "Error detected in " + logEvent.class_name();
             
-            log.info("Creating notification for recipient: {}", managerEmail);
+            log.info("Creating log notification for recipient: {}", recipientEmail);
             
             // Create notification with short strings to avoid exceeding the varchar(255) limit
             Notification notification = Notification.builder()
@@ -125,15 +205,16 @@ public class LogEventConsumer {
                     .sourceType("LOG")
                     .sourceId(logEvent.logId())
                     .tenant(logEvent.tenant())
-                    .recipientEmail(managerEmail)
+                    .recipientEmail(recipientEmail)
+                    .senderEmail(logEvent.senderEmail())
                     .read(false)
                     .createdAt(LocalDateTime.now())
                     .build();
             
             // Save the notification
             notificationService.createNotification(notification);
-            log.info("Notification created for log ID: {}, tenant: {}, recipient: {}", 
-                    logEvent.logId(), logEvent.tenant(), managerEmail);
+            log.info("Log notification created for log ID: {}, tenant: {}, recipient: {}", 
+                    logEvent.logId(), logEvent.tenant(), recipientEmail);
         } catch (Exception e) {
             log.error("Error creating notification: {}", e.getMessage(), e);
         }

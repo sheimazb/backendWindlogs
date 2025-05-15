@@ -15,5 +15,8 @@ public record LogEvent(
     String description,
     String class_name,
     String container_name,
-    String recipientEmail
+    String recipientEmail,
+    Long sourceId,
+    String sourceType,
+    String senderEmail
 ) {} 

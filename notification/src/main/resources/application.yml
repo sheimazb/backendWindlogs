@@ -3,4 +3,39 @@ spring:
     name: notification-service
   config:
     import: optional:configserver:http://localhost:8888
+  # Fallback Kafka configuration (will be overridden by config server if available)
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: notification-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        # Trust both packages
+        spring.json.trusted.packages: "com.windlogs.tickets.kafka,com.windlogs.notification.kafka,*"
+        # Map incoming event types to our local classes
+        spring.json.type.mapping: >
+          COMMENT:com.windlogs.notification.kafka.CommentEvent,
+          SOLUTION:com.windlogs.notification.kafka.SolutionEvent,
+          com.windlogs.tickets.kafka.CommentEvent:com.windlogs.notification.kafka.CommentEvent,
+          com.windlogs.tickets.kafka.SolutionEvent:com.windlogs.notification.kafka.SolutionEvent
+        # Enable type headers
+        spring.json.use.type.headers: true
+        # Fallback to default type
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.value.default.type: com.windlogs.notification.kafka.NotificationEvent
+  main:
+    allow-bean-definition-overriding: true
+
+# Enable more detailed debug logging for Kafka and JSON serialization
+logging:
+  level:
+    org.springframework.kafka: DEBUG
+    org.apache.kafka: DEBUG
+    org.springframework.kafka.support.serializer: TRACE
+    com.windlogs.notification.kafka: DEBUG
+    com.windlogs.notification: DEBUG
+    com.fasterxml.jackson: TRACE
  

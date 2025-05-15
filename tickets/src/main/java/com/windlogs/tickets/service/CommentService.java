@@ -6,6 +6,7 @@ import com.windlogs.tickets.dto.UserResponseDTO;
 import com.windlogs.tickets.entity.Comment;
 import com.windlogs.tickets.entity.Ticket;
 import com.windlogs.tickets.exception.UnauthorizedException;
+import com.windlogs.tickets.kafka.NotificationProducer;
 import com.windlogs.tickets.mapper.CommentMapper;
 import com.windlogs.tickets.repository.CommentRepository;
 import com.windlogs.tickets.repository.TicketRepository;
@@ -29,16 +30,19 @@ public class CommentService {
     private final TicketRepository ticketRepository;
     private final CommentMapper commentMapper;
     private final AuthService authService;
+    private final NotificationProducer notificationProducer;
 
     public CommentService(
             CommentRepository commentRepository, 
             TicketRepository ticketRepository, 
             CommentMapper commentMapper,
-            AuthService authService) {
+            AuthService authService,
+            NotificationProducer notificationProducer) {
         this.commentRepository = commentRepository;
         this.ticketRepository = ticketRepository;
         this.commentMapper = commentMapper;
         this.authService = authService;
+        this.notificationProducer = notificationProducer;
     }
 
     /**
@@ -238,12 +242,71 @@ public class CommentService {
         }
         
         Comment savedComment = commentRepository.save(comment);
+        logger.info("Comment created successfully with ID: {}, for ticket: {}", savedComment.getId(), ticket.getId());
+        
+        // Send notification for the new comment using the domain-specific event producer
+        try {
+            // Get notification message (use comment content or a placeholder)
+            String content = savedComment.getContent();
+            if (content == null || content.isEmpty()) {
+                content = "New comment added to ticket #" + ticket.getId();
+            } else if (content.length() > 200) {
+                content = content.substring(0, 200) + "...";
+            }
+            
+            // For simplicity, sending notification to ticket creator or assignee
+            String recipientEmail = null;
+            
+            // Try to get the ticket creator's email
+            if (ticket.getCreatorUserId() != null && !ticket.getCreatorUserId().equals(currentUser.getId())) {
+                try {
+                    UserResponseDTO creator = authService.getUserById(ticket.getCreatorUserId(), authorization);
+                    if (creator != null) {
+                        recipientEmail = creator.getEmail();
+                    }
+                } catch (Exception e) {
+                    logger.warn("Could not get creator user info: {}", e.getMessage());
+                }
+            }
+            
+            // If no creator, try to get the assigned user's email
+            if (recipientEmail == null && ticket.getAssignedToUserId() != null && !ticket.getAssignedToUserId().equals(currentUser.getId())) {
+                try {
+                    UserResponseDTO assignee = authService.getUserById(ticket.getAssignedToUserId(), authorization);
+                    if (assignee != null) {
+                        recipientEmail = assignee.getEmail();
+                    }
+                } catch (Exception e) {
+                    logger.warn("Could not get assigned user info: {}", e.getMessage());
+                }
+            }
+            
+            // If we found a recipient, send notification
+            if (recipientEmail != null) {
+                notificationProducer.sendCommentNotification(
+                    savedComment.getId(),
+                    content,
+                    ticket.getId(),
+                    currentUser.getEmail(), // Using email as author name since getName() is not available
+                    currentUser.getEmail(),  // Sender email
+                    recipientEmail,          // Recipient email
+                    currentUser.getTenant()
+                );
+                logger.info("Comment notification sent for comment ID: {} to recipient: {}", 
+                        savedComment.getId(), recipientEmail);
+            } else {
+                logger.info("No suitable recipient found for comment notification");
+            }
+            
+        } catch (Exception e) {
+            // Don't fail the comment creation if notification fails
+            logger.error("Failed to send comment notification: {}", e.getMessage(), e);
+        }
+        
         CommentResponseDTO responseDTO = commentMapper.commentToCommentResponseDTO(savedComment);
         
-        // Populate mentioned users in the response
+        // Populate mentioned users for response
         populateMentionedUsers(responseDTO, authorization);
-        
-        logger.info("Comment created successfully with ID: {}, for ticket: {}", savedComment.getId(), ticket.getId());
         
         return responseDTO;
     }

@@ -31,8 +31,12 @@ public class Notification {
     private String sourceType;
     
     private Long sourceId;
+
+    private String actionType;
     
     private String tenant;
+
+    private String senderEmail;
     
     private String recipientEmail;
     

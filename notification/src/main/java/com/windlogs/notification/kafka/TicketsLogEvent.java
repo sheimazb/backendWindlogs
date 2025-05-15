@@ -29,6 +29,9 @@ public class TicketsLogEvent {
     private String container_name;
     private Double timestamp;
     private String userEmail;
+    private Long sourceId;
+    private String sourceType;
+    private String senderEmail;
 
     /**
      * Convert to internal LogEvent format with extracted info
@@ -103,6 +106,20 @@ public class TicketsLogEvent {
         } else {
             log.info("Using recipient email from userEmail field: {}", recipientEmail);
         }
+
+        // Use provided source ID and type if available, or extract from message
+        Long finalSourceId = sourceId != null ? sourceId : logId;
+        String finalSourceType = sourceType != null ? sourceType : "LOG";
+        
+        // Use provided sender email or default if not available
+        String finalSenderEmail = senderEmail;
+        if (finalSenderEmail == null || finalSenderEmail.isEmpty()) {
+            if ("COMMENT".equals(finalSourceType) || "SOLUTION".equals(finalSourceType)) {
+                finalSenderEmail = userEmail; // For comments and solutions, use the userEmail as sender
+            } else {
+                finalSenderEmail = "system@windlogs.com"; // Default system email for logs
+            }
+        }
         
         // Create LogEvent with the extracted data
         return new LogEvent(
@@ -117,7 +134,10 @@ public class TicketsLogEvent {
                 className,
                 container_name != null ? 
                     (container_name.length() > 50 ? container_name.substring(0, 50) : container_name) : "",
-                recipientEmail
+                recipientEmail,
+                finalSourceId,
+                finalSourceType,
+                finalSenderEmail
         );
     }
     
