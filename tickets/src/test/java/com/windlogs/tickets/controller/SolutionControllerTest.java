@@ -69,7 +69,7 @@ public class SolutionControllerTest {
                 .thenReturn(solutionDTO);
 
         // Act & Assert
-        mockMvc.perform(post("/api/solutions")
+        mockMvc.perform(post("/api/v1/solutions")
                 .header("Authorization", authHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(solutionDTO)))
@@ -86,7 +86,7 @@ public class SolutionControllerTest {
         when(solutionService.getSolutionById(anyLong(), anyString())).thenReturn(solutionDTO);
 
         // Act & Assert
-        mockMvc.perform(get("/api/solutions/1")
+        mockMvc.perform(get("/api/v1/solutions/1")
                 .header("Authorization", authHeader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(1)))
@@ -100,7 +100,7 @@ public class SolutionControllerTest {
         when(solutionService.getSolutionByTicketId(anyLong(), anyString())).thenReturn(solutionDTO);
 
         // Act & Assert
-        mockMvc.perform(get("/api/solutions/ticket/1")
+        mockMvc.perform(get("/api/v1/solutions/ticket/1")
                 .header("Authorization", authHeader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(1)))
@@ -115,7 +115,7 @@ public class SolutionControllerTest {
                 .thenReturn(solutionDTO);
 
         // Act & Assert
-        mockMvc.perform(put("/api/solutions/1")
+        mockMvc.perform(put("/api/v1/solutions/1")
                 .header("Authorization", authHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(solutionDTO)))
@@ -132,7 +132,7 @@ public class SolutionControllerTest {
         when(solutionService.getSolutionsByAuthorUserId(anyLong(), anyString())).thenReturn(solutions);
 
         // Act & Assert
-        mockMvc.perform(get("/api/solutions/my-solutions")
+        mockMvc.perform(get("/api/v1/solutions/my-solutions")
                 .header("Authorization", authHeader))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
