@@ -11,4 +11,5 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     List<Project> findByTagsContainingAndTenant(String tag, String tenant);
     List<Project> findByPrimaryTag(String primaryTag);
     List<Project> findByParentProjectId(Long parentId);
+    
 }
