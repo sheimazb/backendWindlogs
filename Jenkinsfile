@@ -23,9 +23,7 @@ pipeline {
         NEXUS_CREDENTIAL_ID = "nexus-credentials"
         DOCKER_CREDENTIAL_ID = "docker-credentials"
         SONAR_CREDENTIAL_ID = "sonar-credentials"
-        // Add Maven options for better performance
-        MAVEN_OPTS = '-Xmx1024m -XX:MaxPermSize=256m'
-        // Flag to track build success
+        MAVEN_OPTS = '-Xmx1024m'
         BUILD_SUCCESS = 'false'
     }
     
