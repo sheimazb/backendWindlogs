@@ -1,6 +1,7 @@
 package com.windlogs.tickets.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.windlogs.tickets.config.TestConfig;
 import com.windlogs.tickets.dto.SolutionDTO;
 import com.windlogs.tickets.dto.UserResponseDTO;
 import com.windlogs.tickets.enums.SolutionStatus;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -24,13 +26,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(value = SolutionController.class, properties = {
-    "spring.cloud.config.enabled=false",
-    "spring.cloud.discovery.enabled=false",
-    "eureka.client.enabled=false",
-    "spring.cloud.config.import-check.enabled=false",
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration"
-})
+@WebMvcTest(SolutionController.class)
+@Import(TestConfig.class)
 public class SolutionControllerTest {
 
     @Autowired
