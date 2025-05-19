@@ -24,7 +24,12 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(SolutionController.class)
+@WebMvcTest(value = SolutionController.class, properties = {
+    "spring.cloud.config.enabled=false",
+    "spring.cloud.discovery.enabled=false",
+    "eureka.client.enabled=false",
+    "spring.cloud.config.import-check.enabled=false"
+})
 public class SolutionControllerTest {
 
     @Autowired

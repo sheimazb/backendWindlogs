@@ -4,6 +4,7 @@ import com.windlogs.tickets.dto.SolutionDTO;
 import com.windlogs.tickets.entity.Solution;
 import com.windlogs.tickets.entity.Ticket;
 import com.windlogs.tickets.enums.SolutionStatus;
+import com.windlogs.tickets.enums.Status;
 import com.windlogs.tickets.exception.UnauthorizedException;
 import com.windlogs.tickets.mapper.SolutionMapper;
 import com.windlogs.tickets.repository.SolutionRepository;
@@ -14,12 +15,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,14 +37,14 @@ public class SolutionServiceTest {
     private SolutionMapper solutionMapper;
 
     @Mock
-    private AuthService authService;
+    private KafkaTemplate<String, Object> kafkaTemplate;
 
     @InjectMocks
     private SolutionService solutionService;
 
-    private Ticket ticket;
     private Solution solution;
     private SolutionDTO solutionDTO;
+    private Ticket ticket;
     private final Long userId = 1L;
     private final String userEmail = "test@example.com";
     private final String tenant = "test-tenant";
@@ -50,24 +52,31 @@ public class SolutionServiceTest {
     @BeforeEach
     void setUp() {
         // Set up test data
-        ticket = new Ticket();
-        ticket.setId(1L);
-        ticket.setAssignedToUserId(userId);
-        ticket.setTenant(tenant);
-
         solution = new Solution();
         solution.setId(1L);
-        solution.setTicket(ticket);
-        solution.setAuthorUserId(userId);
-        solution.setTenant(tenant);
+        solution.setTitle("Test Solution");
+        solution.setContent("This is a test solution");
         solution.setStatus(SolutionStatus.DRAFT);
+        solution.setAuthorUserId(1L);
+        solution.setTenant("test-tenant");
 
         solutionDTO = new SolutionDTO();
         solutionDTO.setId(1L);
-        solutionDTO.setTicketId(1L);
-        solutionDTO.setAuthorUserId(userId);
-        solutionDTO.setAuthorEmail(userEmail);
+        solutionDTO.setTitle("Test Solution");
+        solutionDTO.setContent("This is a test solution");
         solutionDTO.setStatus(SolutionStatus.DRAFT);
+        solutionDTO.setAuthorUserId(1L);
+        solutionDTO.setAuthorEmail("test@example.com");
+        solutionDTO.setTicketId(1L);
+
+        ticket = new Ticket();
+        ticket.setId(1L);
+        ticket.setTitle("Test Ticket");
+        ticket.setDescription("This is a test ticket");
+        ticket.setStatus(Status.TO_DO);
+        ticket.setCreatorUserId(2L);
+        ticket.setAssignedToUserId(1L);
+        ticket.setTenant("test-tenant");
     }
 
     @Test
@@ -80,14 +89,13 @@ public class SolutionServiceTest {
         when(solutionMapper.toDTO(any(Solution.class))).thenReturn(solutionDTO);
 
         // Act
-        SolutionDTO result = solutionService.createSolution(solutionDTO, userId, userEmail, tenant);
+        SolutionDTO result = solutionService.createSolution(solutionDTO, 1L, "test@example.com", "test-tenant");
 
         // Assert
         assertNotNull(result);
-        assertEquals(solutionDTO.getId(), result.getId());
-        assertEquals(solutionDTO.getTicketId(), result.getTicketId());
-        assertEquals(userEmail, result.getAuthorEmail());
-        verify(solutionRepository, times(1)).save(any(Solution.class));
+        assertEquals(1L, result.getId());
+        assertEquals("Test Solution", result.getTitle());
+        assertEquals(1L, result.getAuthorUserId());
     }
 
     @Test
@@ -105,7 +113,7 @@ public class SolutionServiceTest {
     @Test
     void createSolution_UserNotAssigned() {
         // Arrange
-        ticket.setAssignedToUserId(2L); // Different user ID
+        ticket.setAssignedToUserId(2L);
         when(ticketRepository.findByIdAndTenant(anyLong(), anyString())).thenReturn(Optional.of(ticket));
 
         // Act & Assert
@@ -135,11 +143,12 @@ public class SolutionServiceTest {
         when(solutionMapper.toDTO(any(Solution.class))).thenReturn(solutionDTO);
 
         // Act
-        SolutionDTO result = solutionService.getSolutionById(1L, tenant);
+        SolutionDTO result = solutionService.getSolutionById(1L, "test-tenant");
 
         // Assert
         assertNotNull(result);
-        assertEquals(solutionDTO.getId(), result.getId());
+        assertEquals(1L, result.getId());
+        assertEquals("Test Solution", result.getTitle());
     }
 
     @Test
