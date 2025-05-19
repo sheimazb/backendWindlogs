@@ -8,6 +8,18 @@ pipeline {
         skipDefaultCheckout()
         // Don't run concurrent builds of the same branch
         disableConcurrentBuilds()
+        // Add timeout to prevent hanging builds
+        timeout(time: 60, unit: 'MINUTES')
+    }
+    
+    // Add triggers for automatic builds
+    triggers {
+        // Build periodically at midnight every day
+        cron('H 0 * * *')
+        // Poll SCM every 15 minutes
+        pollSCM('H/15 * * * *')
+        // Build after push to repository (requires webhook configuration)
+        githubPush()
     }
     
     tools {
@@ -23,7 +35,8 @@ pipeline {
         NEXUS_CREDENTIAL_ID = "nexus-credentials"
         DOCKER_CREDENTIAL_ID = "docker-credentials"
         SONAR_CREDENTIAL_ID = "sonar-credentials"
-        MAVEN_OPTS = '-Xmx1024m'
+        // Reduce Maven memory usage to prevent OOM issues
+        MAVEN_OPTS = '-Xmx512m'    
         BUILD_SUCCESS = 'false'
     }
     
@@ -38,130 +51,139 @@ pipeline {
             }
         }
         
-        stage('Build and Test Microservices') {
-            parallel {
-                stage('Authentication Service') {
-                    steps {
-                        dir('authentication') {
-                            // Use -T for parallel threads in Maven
-                            sh 'mvn -T 1C clean package -DskipTests'
-                            sh 'mvn -T 1C test'
-                        }
-                    }
-                    post {
-                        success {
-                            echo 'Authentication service build and tests successful'
-                            junit 'authentication/target/surefire-reports/*.xml'
-                        }
-                        failure {
-                            echo 'Authentication service build or tests failed'
-                            script {
-                                currentBuild.result = 'FAILURE'
-                            }
-                        }
+        // Build microservices sequentially instead of in parallel to reduce memory usage
+        stage('Build Authentication Service') {
+            steps {
+                dir('authentication') {
+                    // Remove parallel thread option (-T 1C) to reduce memory consumption
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+            post {
+                success {
+                    echo 'Authentication service build successful'
+                }
+                failure {
+                    echo 'Authentication service build failed'
+                    script {
+                        currentBuild.result = 'FAILURE'
                     }
                 }
-                
-                stage('Config Server') {
-                    steps {
-                        dir('config-server') {
-                            sh 'mvn -T 1C clean package -DskipTests'
-                            sh 'mvn -T 1C test'
-                        }
-                    }
-                    post {
-                        success {
-                            echo 'Config Server build and tests successful'
-                            junit 'config-server/target/surefire-reports/*.xml'
-                        }
-                        failure {
-                            echo 'Config Server build or tests failed'
-                            script {
-                                currentBuild.result = 'FAILURE'
-                            }
-                        }
+            }
+        }
+        
+        stage('Build Config Server') {
+            steps {
+                dir('config-server') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+            post {
+                success {
+                    echo 'Config Server build successful'
+                }
+                failure {
+                    echo 'Config Server build failed'
+                    script {
+                        currentBuild.result = 'FAILURE'
                     }
                 }
-                
-                stage('Discovery Service') {
-                    steps {
-                        dir('discovery') {
-                            sh 'mvn -T 1C clean package -DskipTests'
-                            sh 'mvn -T 1C test'
-                        }
-                    }
-                    post {
-                        success {
-                            echo 'Discovery Service build and tests successful'
-                            junit 'discovery/target/surefire-reports/*.xml'
-                        }
-                        failure {
-                            echo 'Discovery Service build or tests failed'
-                            script {
-                                currentBuild.result = 'FAILURE'
-                            }
-                        }
+            }
+        }
+        
+        stage('Build Discovery Service') {
+            steps {
+                dir('discovery') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+            post {
+                success {
+                    echo 'Discovery Service build successful'
+                }
+                failure {
+                    echo 'Discovery Service build failed'
+                    script {
+                        currentBuild.result = 'FAILURE'
                     }
                 }
-                
-                stage('Gateway Service') {
-                    steps {
-                        dir('gateway') {
-                            sh 'mvn -T 1C clean package -DskipTests'
-                            sh 'mvn -T 1C test'
-                        }
-                    }
-                    post {
-                        success {
-                            echo 'Gateway Service build and tests successful'
-                            junit 'gateway/target/surefire-reports/*.xml'
-                        }
-                        failure {
-                            echo 'Gateway Service build or tests failed'
-                            script {
-                                currentBuild.result = 'FAILURE'
-                            }
-                        }
+            }
+        }
+        
+        stage('Build Gateway Service') {
+            steps {
+                dir('gateway') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+            post {
+                success {
+                    echo 'Gateway Service build successful'
+                }
+                failure {
+                    echo 'Gateway Service build failed'
+                    script {
+                        currentBuild.result = 'FAILURE'
                     }
                 }
-                
-                stage('Notification Service') {
-                    steps {
-                        dir('notification') {
-                            sh 'mvn -T 1C clean package -DskipTests'
-                            sh 'mvn -T 1C test'
-                        }
-                    }
-                    post {
-                        success {
-                            echo 'Notification Service build and tests successful'
-                            junit 'notification/target/surefire-reports/*.xml'
-                        }
-                        failure {
-                            echo 'Notification Service build or tests failed'
-                            script {
-                                currentBuild.result = 'FAILURE'
-                            }
-                        }
+            }
+        }
+        
+        stage('Build Notification Service') {
+            steps {
+                dir('notification') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+            post {
+                success {
+                    echo 'Notification Service build successful'
+                }
+                failure {
+                    echo 'Notification Service build failed'
+                    script {
+                        currentBuild.result = 'FAILURE'
                     }
                 }
-                
-                stage('Tickets Service') {
-                    steps {
-                        dir('tickets') {
-                            sh 'mvn -T 1C clean package -DskipTests'
-                            sh 'mvn -T 1C test'
-                        }
+            }
+        }
+        
+        stage('Build Tickets Service') {
+            steps {
+                dir('tickets') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+            post {
+                success {
+                    echo 'Tickets Service build successful'
+                }
+                failure {
+                    echo 'Tickets Service build failed'
+                    script {
+                        currentBuild.result = 'FAILURE'
                     }
-                    post {
-                        success {
-                            echo 'Tickets Service build and tests successful'
-                            junit 'tickets/target/surefire-reports/*.xml'
-                        }
-                        failure {
-                            echo 'Tickets Service build or tests failed'
-                            script {
+                }
+            }
+        }
+        
+        // Run tests separately and sequentially to reduce memory usage
+        stage('Test Microservices') {
+            steps {
+                script {
+                    def microservices = ['authentication', 'config-server', 'discovery', 'gateway', 'notification', 'tickets']
+                    
+                    for (service in microservices) {
+                        echo "Testing ${service} service"
+                        dir(service) {
+                            try {
+                                sh 'mvn test'
+                                echo "${service} tests passed"
+                                junit "${service}/target/surefire-reports/*.xml"
+                            } catch (Exception e) {
+                                echo "${service} tests failed"
                                 currentBuild.result = 'FAILURE'
+                                junit allowEmptyResults: true, testResults: "${service}/target/surefire-reports/*.xml"
                             }
                         }
                     }
@@ -174,9 +196,9 @@ pipeline {
             steps {
                 script {
                     if (currentBuild.result == 'FAILURE') {
-                        error "One or more microservices failed to build. Aborting pipeline."
+                        error "One or more microservices failed to build or test. Aborting pipeline."
                     } else {
-                        echo "All microservices built successfully. Proceeding with next stages."
+                        echo "All microservices built and tested successfully. Proceeding with next stages."
                         env.BUILD_SUCCESS = 'true'
                     }
                 }
@@ -231,6 +253,7 @@ pipeline {
             }
         }
         
+        // Build Docker images sequentially to reduce resource usage
         stage('Build Docker Images') {
             when {
                 expression { env.BUILD_SUCCESS == 'true' }
@@ -239,20 +262,13 @@ pipeline {
                 script {
                     def microservices = ['authentication', 'config-server', 'discovery', 'gateway', 'notification', 'tickets']
                     
-                    // Build images in parallel
-                    def parallelStages = [:]
-                    
                     for (service in microservices) {
-                        def serviceName = service
-                        parallelStages["Build ${serviceName} image"] = {
-                            dir(serviceName) {
-                                // Use Docker buildkit for faster builds
-                                sh "DOCKER_BUILDKIT=1 docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t windlogs/${serviceName}:${BUILD_NUMBER} ."
-                            }
+                        echo "Building Docker image for ${service}"
+                        dir(service) {
+                            // Disable BuildKit to reduce memory usage
+                            sh "docker build -t windlogs/${service}:${BUILD_NUMBER} ."
                         }
                     }
-                    
-                    parallel parallelStages
                 }
             }
         }
@@ -271,17 +287,10 @@ pipeline {
                         
                         def microservices = ['authentication', 'config-server', 'discovery', 'gateway', 'notification', 'tickets']
                         
-                        // Push images in parallel
-                        def parallelStages = [:]
-                        
                         for (service in microservices) {
-                            def serviceName = service
-                            parallelStages["Push ${serviceName} image"] = {
-                                sh "docker push windlogs/${serviceName}:${BUILD_NUMBER}"
-                            }
+                            echo "Pushing Docker image for ${service}"
+                            sh "docker push windlogs/${service}:${BUILD_NUMBER}"
                         }
-                        
-                        parallel parallelStages
                     }
                 }
             }
