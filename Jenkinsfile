@@ -232,7 +232,7 @@ pipeline {
             emailext (
                 subject: "Pipeline Success: ${currentBuild.fullDisplayName}",
                 body: "The pipeline has completed successfully.",
-                to: 'team@windlogs.com'
+                to: 'zbedichaima@gmail.com'
             )
         }
         failure {
@@ -240,7 +240,7 @@ pipeline {
             emailext (
                 subject: "Pipeline Failure: ${currentBuild.fullDisplayName}",
                 body: "The pipeline has failed. Please check the logs for details.",
-                to: 'team@windlogs.com'
+                to: 'zbedichaima@gmail.com'
             )
         }
     }
