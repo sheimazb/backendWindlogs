@@ -44,6 +44,7 @@ public class SecurityConfig {
                                 "/api/v1/projects/public/by-tag/**",
                                 "/api/v1/projects/public/{projectId}/members",
                                 "/api/v1/users/id/{id}",
+                                "/api/v1/auth/stats",
                                 "/ws/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/employees/create-staff").hasAuthority("CREATE_STAFF")

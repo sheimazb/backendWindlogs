@@ -3,12 +3,14 @@ package com.windlogs.tickets.repository;
 import com.windlogs.tickets.dto.ActivityStatsDTO;
 import com.windlogs.tickets.dto.LogStatsDTO;
 import com.windlogs.tickets.entity.Log;
+import com.windlogs.tickets.enums.LogType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public interface LogRepository extends JpaRepository<Log, Long> {
     
@@ -36,7 +38,7 @@ public interface LogRepository extends JpaRepository<Log, Long> {
                 (Date) row[0],
                 (String) row[1],
                 ((Number) row[2]).longValue()))
-            .toList();
+            .collect(Collectors.toList());
     }
     
     default List<ActivityStatsDTO> getActivityByDayForProject(Long projectId) {
@@ -45,6 +47,9 @@ public interface LogRepository extends JpaRepository<Log, Long> {
             .map(row -> new ActivityStatsDTO(
                 (Date) row[0],
                 ((Number) row[1]).longValue()))
-            .toList();
+            .collect(Collectors.toList());
     }
+
+    @Query("SELECT COUNT(l) FROM Log l WHERE l.projectId = :projectId AND l.type = com.windlogs.tickets.enums.LogType.ERROR")
+    long countAllErrorsByProject(@Param("projectId") Long projectId);
 }

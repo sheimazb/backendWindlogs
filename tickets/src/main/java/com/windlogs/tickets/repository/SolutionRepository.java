@@ -38,4 +38,12 @@ public interface SolutionRepository extends JpaRepository<Solution, Long> {
      * @return List of solutions for the tenant
      */
     List<Solution> findByTenant(String tenant);
+    
+    /**
+     * Count solutions created by a specific developer within a tenant
+     * @param authorUserId The ID of the developer who authored the solutions
+     * @param tenant The tenant identifier
+     * @return Number of solutions created by the developer
+     */
+    Long countByAuthorUserIdAndTenant(Long authorUserId, String tenant);
 } 

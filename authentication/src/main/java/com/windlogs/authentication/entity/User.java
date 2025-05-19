@@ -33,22 +33,16 @@ public class User implements UserDetails, Principal, Serializable {
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "_user_seq")
     @SequenceGenerator(name = "_user_seq")
     private Long id;
-
     private String firstname;
     private String lastname;
-
     @Column(unique = true)
     private String email;
-
     private String password;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
-
     @Column(nullable = false)
     private String tenant;
-
     private String image;
     private String pronouns;
     private String location;
@@ -56,17 +50,13 @@ public class User implements UserDetails, Principal, Serializable {
     private String company;
     private String phone;
     private String lien;
-
     @Column(name = "reset_password_token")
     private String resetPasswordToken;
-
     private boolean accountLocked;
     private boolean enabled;
-
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdDate;
-
     @LastModifiedDate
     @Column(insertable = false)
     private LocalDateTime lastModifiedDate;
@@ -138,22 +128,6 @@ public class User implements UserDetails, Principal, Serializable {
 
     public String getFullName() {
         return firstname + " " + lastname;
-    }
-
-    public void addProject(Project project, boolean isCreator) {
-        ProjectUser projectUser = ProjectUser.builder()
-                .id(new ProjectUserId(project.getId(), this.id))
-                .project(project)
-                .user(this)
-                .isCreator(isCreator)
-                .build();
-        projectUsers.add(projectUser);
-        project.getProjectUsers().add(projectUser);
-    }
-
-    public void removeProject(Project project) {
-        projectUsers.removeIf(projectUser -> projectUser.getProject().equals(project));
-        project.getProjectUsers().removeIf(projectUser -> projectUser.getUser().equals(this));
     }
 
     @Override

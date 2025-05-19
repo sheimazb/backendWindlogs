@@ -22,4 +22,13 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
      * @return Optional containing the ticket if found
      */
     Optional<Ticket> findByIdAndTenant(Long id, String tenant);
+    
+    /**
+     * Count tickets assigned to a specific user within a tenant
+     * @param assignedToUserId The ID of the user assigned to tickets
+     * @param tenant The tenant identifier
+     * @return Number of tickets assigned to the user
+     */
+    Long countByAssignedToUserIdAndTenant(Long assignedToUserId, String tenant);
+
 }
