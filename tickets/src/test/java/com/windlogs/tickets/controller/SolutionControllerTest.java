@@ -28,7 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "spring.cloud.config.enabled=false",
     "spring.cloud.discovery.enabled=false",
     "eureka.client.enabled=false",
-    "spring.cloud.config.import-check.enabled=false"
+    "spring.cloud.config.import-check.enabled=false",
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration"
 })
 public class SolutionControllerTest {
 
