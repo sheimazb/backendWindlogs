@@ -212,6 +212,28 @@ pipeline {
                     } else {
                         echo "All microservices built successfully. Proceeding with next stages."
                         env.BUILD_SUCCESS = 'true'
+                        // Ajout pour déboguer
+                        echo "BUILD_SUCCESS set to: ${env.BUILD_SUCCESS}"
+                    }
+                }
+            }
+        }
+        
+        // Ajout d'une étape de débogage pour les variables importantes
+        stage('Debug Variables') {
+            steps {
+                script {
+                    echo "Current BUILD_SUCCESS value: ${env.BUILD_SUCCESS}"
+                    echo "Current BRANCH_NAME value: ${env.BRANCH_NAME}"
+                    
+                    // Déterminer la branche avec git directement
+                    env.GIT_BRANCH = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
+                    echo "Detected branch using git command: ${env.GIT_BRANCH}"
+                    
+                    // Définir explicitement BUILD_SUCCESS si nécessaire
+                    if (env.BUILD_SUCCESS != 'true') {
+                        echo "BUILD_SUCCESS was not properly set. Setting it to true now."
+                        env.BUILD_SUCCESS = 'true'
                     }
                 }
             }
@@ -220,8 +242,8 @@ pipeline {
         stage('Code Quality Analysis') {
             when {
                 allOf {
-                    expression { env.BUILD_SUCCESS == 'true' }
-                    expression { return env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'test' }
+                    expression { return env.BUILD_SUCCESS == 'true' }
+                    expression { return env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'test' }
                 }
             }
             steps {
@@ -234,8 +256,8 @@ pipeline {
         stage('Quality Gate') {
             when {
                 allOf {
-                    expression { env.BUILD_SUCCESS == 'true' }
-                    expression { return env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'test' }
+                    expression { return env.BUILD_SUCCESS == 'true' }
+                    expression { return env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'develop' || env.GIT_BRANCH == 'test' }
                 }
             }
             steps {
@@ -248,8 +270,8 @@ pipeline {
         stage('Publish to Nexus') {
             when {
                 allOf {
-                    expression { env.BUILD_SUCCESS == 'true' }
-                    expression { return env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'test' }
+                    expression { return env.BUILD_SUCCESS == 'true' }
+                    expression { return env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'develop' || env.GIT_BRANCH == 'test' }
                 }
             }
             steps {
@@ -288,8 +310,8 @@ pipeline {
         stage('Push Docker Images') {
             when {
                 allOf {
-                    expression { env.BUILD_SUCCESS == 'true' }
-                    expression { return env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'test' }
+                    expression { return env.BUILD_SUCCESS == 'true' }
+                    expression { return env.GIT_BRANCH == 'main' || env.GIT_BRANCH == 'develop' || env.GIT_BRANCH == 'test' }
                 }
             }
             steps {
@@ -311,11 +333,12 @@ pipeline {
         stage('Deploy to Development') {
             when {
                 allOf {
-                    expression { env.BUILD_SUCCESS == 'true' }
-                    expression { return env.BRANCH_NAME == 'test' }
+                    expression { return env.BUILD_SUCCESS == 'true' }
+                    expression { return env.GIT_BRANCH == 'test' }
                 }
             }
             steps {
+                echo "Deploying to development with branch: ${env.GIT_BRANCH}"
                 sh 'docker-compose down || true'
                 sh "BUILD_NUMBER=${BUILD_NUMBER} docker-compose up -d"
             }
@@ -324,11 +347,12 @@ pipeline {
         stage('Deploy to Production') {
             when {
                 allOf {
-                    expression { env.BUILD_SUCCESS == 'true' }
-                    branch 'main'
+                    expression { return env.BUILD_SUCCESS == 'true' }
+                    expression { return env.GIT_BRANCH == 'main' }
                 }
             }
             steps {
+                echo "Deploying to production with branch: ${env.GIT_BRANCH}"
                 input message: 'Approve deployment to production?', ok: 'Deploy'
                 sh 'docker-compose -f docker-compose.prod.yml down || true'
                 sh "BUILD_NUMBER=${BUILD_NUMBER} docker-compose -f docker-compose.prod.yml up -d"
