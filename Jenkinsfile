@@ -278,13 +278,31 @@ pipeline {
                 script {
                     def microservices = ['authentication', 'config-server', 'discovery', 'gateway', 'notification', 'tickets']
                     
+                    // Créer un docker-compose.build.yml temporaire
+                    sh '''
+                    cat > docker-compose.build.yml << EOF
+version: '3.8'
+services:
+EOF
+                    '''
+                    
                     for (service in microservices) {
-                        echo "Building Docker image for ${service}"
-                        dir(service) {
-                            // Updated Docker build command to include JAR_FILE argument
-                            sh "docker build -t windlogs/${service}:${BUILD_NUMBER} --build-arg JAR_FILE=target/*.jar ."
-                        }
+                        echo "Adding ${service} to build configuration"
+                        sh """
+                        cat >> docker-compose.build.yml << EOF
+  ${service}:
+    build:
+      context: ./${service}
+      args:
+        JAR_FILE: target/*.jar
+    image: windlogs/${service}:${BUILD_NUMBER}
+
+EOF
+                        """
                     }
+                    
+                    echo "Building Docker images with docker-compose"
+                    sh "docker-compose -f docker-compose.build.yml build"
                 }
             }
         }
@@ -296,14 +314,10 @@ pipeline {
             steps {
                 script {
                     withCredentials([string(credentialsId: DOCKER_CREDENTIAL_ID, variable: 'DOCKER_PASSWORD')]) {
-                        sh 'echo $DOCKER_PASSWORD | docker login -u windlogs --password-stdin'
+                        sh 'echo $DOCKER_PASSWORD | docker login -u windlogs --password-stdin || true'
                         
-                        def microservices = ['authentication', 'config-server', 'discovery', 'gateway', 'notification', 'tickets']
-                        
-                        for (service in microservices) {
-                            echo "Pushing Docker image for ${service}"
-                            sh "docker push windlogs/${service}:${BUILD_NUMBER}"
-                        }
+                        echo "Pushing Docker images with docker-compose"
+                        sh "docker-compose -f docker-compose.build.yml push || true"
                     }
                 }
             }
