@@ -269,26 +269,6 @@ pipeline {
                 // }
             }
         }
-        
-        stage('Publish to Nexus') {
-            when {
-                expression { return true }  // Toujours exécuter cette étape
-            }
-            steps {
-                echo "Skipping Nexus deployment - Connection issue with Nexus server"
-                // Commenté jusqu'à ce que le serveur Nexus soit accessible
-                // script {
-                //     def microservices = ['authentication', 'config-server', 'discovery', 'gateway', 'notification', 'tickets']
-                //     
-                //     for (service in microservices) {
-                //         dir(service) {
-                //             sh "mvn deploy -DskipTests"
-                //         }
-                //     }
-                // }
-            }
-        }
-        
         // Build Docker images sequentially to reduce resource usage
         stage('Build Docker Images') {
             when {
