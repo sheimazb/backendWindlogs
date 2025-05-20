@@ -269,16 +269,22 @@ pipeline {
                 // }
             }
         }
-        // Build Docker images sequentially to reduce resource usage
-        stage('Build Docker Images') {
+        // Skip Docker build and push for now since docker-compose is not available
+        stage('Skip Docker Build and Push') {
             when {
                 expression { return true }  // Toujours exécuter cette étape
             }
             steps {
+                echo "Skipping Docker build and push steps - Docker not available in Jenkins container"
+                echo "To fix this issue, you have two options:"
+                echo "1. Install Docker and docker-compose in the Jenkins container"
+                echo "2. Use a Jenkins agent with Docker and docker-compose installed"
+                echo "3. Mount the Docker socket from the host into the Jenkins container"
+                
+                // Créer quand même le fichier docker-compose.build.yml pour référence future
                 script {
                     def microservices = ['authentication', 'config-server', 'discovery', 'gateway', 'notification', 'tickets']
                     
-                    // Créer un docker-compose.build.yml temporaire
                     sh '''
                     cat > docker-compose.build.yml << EOF
 version: '3.8'
@@ -287,7 +293,6 @@ EOF
                     '''
                     
                     for (service in microservices) {
-                        echo "Adding ${service} to build configuration"
                         sh """
                         cat >> docker-compose.build.yml << EOF
   ${service}:
@@ -301,48 +306,44 @@ EOF
                         """
                     }
                     
-                    echo "Building Docker images with docker-compose"
-                    sh "docker-compose -f docker-compose.build.yml build"
+                    echo "Created docker-compose.build.yml file for reference"
+                    sh "cat docker-compose.build.yml"
                 }
             }
         }
         
-        stage('Push Docker Images') {
+        stage('Deploy to Development - Manual Instructions') {
             when {
                 expression { return true }  // Toujours exécuter cette étape
             }
             steps {
-                script {
-                    withCredentials([string(credentialsId: DOCKER_CREDENTIAL_ID, variable: 'DOCKER_PASSWORD')]) {
-                        sh 'echo $DOCKER_PASSWORD | docker login -u windlogs --password-stdin || true'
-                        
-                        echo "Pushing Docker images with docker-compose"
-                        sh "docker-compose -f docker-compose.build.yml push || true"
-                    }
-                }
+                echo "Skipping automatic deployment - Docker not available in Jenkins container"
+                echo "To deploy manually on your development server, run these commands:"
+                echo "1. Copy the generated JAR files to your server"
+                echo "2. On your server, run: BUILD_NUMBER=${BUILD_NUMBER} docker-compose up -d"
+                
+                // Archive the JAR files and docker-compose files for manual deployment
+                sh "mkdir -p deployment-files"
+                sh "cp **/target/*.jar deployment-files/ || true"
+                sh "cp docker-compose.yml docker-compose.build.yml deployment-files/ || true"
+                archiveArtifacts artifacts: 'deployment-files/**', allowEmptyArchive: true
             }
         }
         
-        stage('Deploy to Development') {
+        stage('Deploy to Production - Manual Instructions') {
             when {
                 expression { return true }  // Toujours exécuter cette étape
             }
             steps {
-                echo "Deploying to development with branch: ${env.GIT_BRANCH}"
-                sh 'docker-compose down || true'
-                sh "BUILD_NUMBER=${BUILD_NUMBER} docker-compose up -d"
-            }
-        }
-        
-        stage('Deploy to Production') {
-            when {
-                expression { return true }  // Toujours exécuter cette étape
-            }
-            steps {
-                echo "Deploying to production with branch: ${env.GIT_BRANCH}"
-                input message: 'Approve deployment to production?', ok: 'Deploy'
-                sh 'docker-compose -f docker-compose.prod.yml down || true'
-                sh "BUILD_NUMBER=${BUILD_NUMBER} docker-compose -f docker-compose.prod.yml up -d"
+                input message: 'Proceed with manual production deployment instructions?', ok: 'Continue'
+                echo "Skipping automatic deployment - Docker not available in Jenkins container"
+                echo "To deploy manually on your production server, run these commands:"
+                echo "1. Copy the generated JAR files to your production server"
+                echo "2. On your production server, run: BUILD_NUMBER=${BUILD_NUMBER} docker-compose -f docker-compose.prod.yml up -d"
+                
+                // Copier les fichiers docker-compose.prod.yml dans les artefacts également
+                sh "cp docker-compose.prod.yml deployment-files/ || true"
+                archiveArtifacts artifacts: 'deployment-files/**', allowEmptyArchive: true
             }
         }
     }
