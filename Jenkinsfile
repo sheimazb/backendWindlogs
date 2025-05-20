@@ -41,6 +41,16 @@ pipeline {
     }
     
     stages {
+        // Ajout d'une étape de debug pour afficher les informations sur la branche
+        stage('Debug Info') {
+            steps {
+                script {
+                    echo "Current branch: ${env.BRANCH_NAME}"
+                    echo "Build ID: ${BUILD_NUMBER}"
+                }
+            }
+        }
+        
         stage('Checkout') {
             steps {
                 // Clean before checkout for a fresh build
@@ -211,7 +221,7 @@ pipeline {
             when {
                 allOf {
                     expression { env.BUILD_SUCCESS == 'true' }
-                    expression { return env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' }
+                    expression { return env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'test' }
                 }
             }
             steps {
@@ -225,7 +235,7 @@ pipeline {
             when {
                 allOf {
                     expression { env.BUILD_SUCCESS == 'true' }
-                    expression { return env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' }
+                    expression { return env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'test' }
                 }
             }
             steps {
@@ -239,7 +249,7 @@ pipeline {
             when {
                 allOf {
                     expression { env.BUILD_SUCCESS == 'true' }
-                    expression { return env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' }
+                    expression { return env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'test' }
                 }
             }
             steps {
@@ -267,8 +277,8 @@ pipeline {
                     for (service in microservices) {
                         echo "Building Docker image for ${service}"
                         dir(service) {
-                            // Disable BuildKit to reduce memory usage
-                            sh "docker build -t windlogs/${service}:${BUILD_NUMBER} ."
+                            // Updated Docker build command to include JAR_FILE argument
+                            sh "docker build -t windlogs/${service}:${BUILD_NUMBER} --build-arg JAR_FILE=target/*.jar ."
                         }
                     }
                 }
@@ -279,7 +289,7 @@ pipeline {
             when {
                 allOf {
                     expression { env.BUILD_SUCCESS == 'true' }
-                    expression { return env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' }
+                    expression { return env.BRANCH_NAME == 'main' || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'test' }
                 }
             }
             steps {
@@ -302,7 +312,7 @@ pipeline {
             when {
                 allOf {
                     expression { env.BUILD_SUCCESS == 'true' }
-                    branch 'develop'
+                    expression { return env.BRANCH_NAME == 'test' }
                 }
             }
             steps {
@@ -350,4 +360,4 @@ pipeline {
             )
         }
     }
-} 
+}

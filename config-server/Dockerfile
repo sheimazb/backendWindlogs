@@ -8,7 +8,7 @@ ARG JAR_FILE
 ADD ${JAR_FILE} app.jar
 
 # Expose le port sur lequel l'application Spring Boot va écouter
-EXPOSE 8088
+EXPOSE 8888
 
 # Commande pour démarrer l'application Spring Boot
-ENTRYPOINT ["java", "-jar", "/app.jar"]
+ENTRYPOINT ["java", "-jar", "/app.jar"] 

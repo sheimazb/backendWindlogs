@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   mail-dev:
     container_name: mail-dev-bsn
@@ -7,6 +9,8 @@ services:
       - 1025:1025
     networks:
       - microservices-net
+    restart: always
+
   zipkin:
     container_name: zipkin
     image: openzipkin/zipkin
@@ -14,6 +18,8 @@ services:
       - "9411:9411"
     networks:
       - microservices-net
+    restart: always
+
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     container_name: zookeeper
@@ -25,6 +31,8 @@ services:
       - "22181:2181"
     networks:
       - microservices-net
+    restart: always
+
   kafka:
     image: confluentinc/cp-kafka:latest
     container_name: ms_kafka
@@ -41,7 +49,8 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9092
     networks:
       - microservices-net
-      
+    restart: always
+
   # Configuration server - must start first for other services
   config-server:
     image: windlogs/config-server:${BUILD_NUMBER}
@@ -51,8 +60,9 @@ services:
     networks:
       - microservices-net
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
-      
+      - SPRING_PROFILES_ACTIVE=prod
+    restart: always
+
   # Discovery server - starts after config server
   discovery:
     image: windlogs/discovery:${BUILD_NUMBER}
@@ -64,9 +74,10 @@ services:
     depends_on:
       - config-server
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=prod
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
-      
+    restart: always
+
   # Authentication service
   authentication:
     image: windlogs/authentication:${BUILD_NUMBER}
@@ -80,10 +91,11 @@ services:
       - discovery
       - kafka
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=prod
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery:8761/eureka/
-      
+    restart: always
+
   # Gateway service
   gateway:
     image: windlogs/gateway:${BUILD_NUMBER}
@@ -96,10 +108,11 @@ services:
       - config-server
       - discovery
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=prod
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery:8761/eureka/
-      
+    restart: always
+
   # Notification service
   notification:
     image: windlogs/notification:${BUILD_NUMBER}
@@ -113,11 +126,12 @@ services:
       - discovery
       - kafka
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=prod
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery:8761/eureka/
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
-      
+    restart: always
+
   # Tickets service
   tickets:
     image: windlogs/tickets:${BUILD_NUMBER}
@@ -131,12 +145,12 @@ services:
       - discovery
       - kafka
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=prod
       - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery:8761/eureka/
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    restart: always
 
 networks:
   microservices-net:
-    driver: bridge
-
+    driver: bridge 
