@@ -249,9 +249,11 @@ pipeline {
                 expression { return true }  // Toujours exécuter cette étape
             }
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh 'mvn sonar:sonar -Dsonar.projectKey=windlogs -Dsonar.projectName="Windlogs"'
-                }
+                echo "Skipping SonarQube analysis - Plugin not installed"
+                // Commenté jusqu'à ce que le plugin SonarQube soit installé
+                // withSonarQubeEnv('SonarQube') {
+                //     sh 'mvn sonar:sonar -Dsonar.projectKey=windlogs -Dsonar.projectName="Windlogs"'
+                // }
             }
         }
         
@@ -260,9 +262,11 @@ pipeline {
                 expression { return true }  // Toujours exécuter cette étape
             }
             steps {
-                timeout(time: 10, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
-                }
+                echo "Skipping Quality Gate - Plugin not installed"
+                // Commenté jusqu'à ce que le plugin SonarQube soit installé
+                // timeout(time: 10, unit: 'MINUTES') {
+                //     waitForQualityGate abortPipeline: true
+                // }
             }
         }
         
