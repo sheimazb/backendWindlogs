@@ -2,6 +2,7 @@ package com.windlogs.tickets.repository;
 
 import com.windlogs.tickets.entity.Solution;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -46,4 +47,7 @@ public interface SolutionRepository extends JpaRepository<Solution, Long> {
      * @return Number of solutions created by the developer
      */
     Long countByAuthorUserIdAndTenant(Long authorUserId, String tenant);
+    
+    @Query("SELECT s FROM Solution s WHERE s.authorUserId = ?1 AND s.tenant = ?2 ORDER BY s.createdAt DESC LIMIT 5")
+    List<Solution> findRecentByAuthorUserIdAndTenant(Long authorUserId, String tenant);
 } 
