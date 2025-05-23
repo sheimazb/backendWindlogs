@@ -24,4 +24,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
   
     @Query("SELECT COUNT(u) FROM User u WHERE u.role = com.windlogs.authentication.entity.Role.PARTNER AND u.accountLocked = true")
     long countLockedPartners();
+
+    boolean existsByEmail(String email);
+    long countByEnabledTrue();
+    long countByAccountLockedTrue();
 }

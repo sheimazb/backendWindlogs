@@ -22,24 +22,7 @@ public class StatsController {
     public statsResponse getPartnersStats() {
         return new statsResponse(statsService.totalPartners(), statsService.activePartners(), statsService.lockedPartners());
     }
+ 
     
-    /**
-     * Get the count of projects a user is a member of within a tenant
-     * @param userId The ID of the user
-     * @param tenant The tenant identifier
-     * @return Response with user ID, tenant, and project count
-     */
-    @GetMapping("/projects-count/user/{userId}/tenant/{tenant}")
-    public ResponseEntity<Map<String, Object>> getProjectCountByUser(
-            @PathVariable Long userId,
-            @PathVariable String tenant) {
-        
-        Long projectCount = statsService.countUserProjects(userId, tenant);
-        
-        return ResponseEntity.ok(Map.of(
-            "userId", userId,
-            "tenant", tenant,
-            "projectsCount", projectCount
-        ));
-    }
+ 
 }

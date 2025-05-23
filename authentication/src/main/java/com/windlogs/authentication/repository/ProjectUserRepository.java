@@ -16,4 +16,12 @@ public interface ProjectUserRepository extends JpaRepository<ProjectUser, Projec
      */
     @Query("SELECT COUNT(pu) FROM ProjectUser pu JOIN pu.project p WHERE pu.user.id = :userId AND p.tenant = :tenant")
     Long countProjectsByUserIdAndTenant(@Param("userId") Long userId, @Param("tenant") String tenant);
+    
+    /**
+     * Count the number of projects a user is a member of across all tenants
+     * @param userId The ID of the user
+     * @return Number of projects the user is a member of
+     */
+    @Query("SELECT COUNT(pu) FROM ProjectUser pu WHERE pu.user.id = :userId")
+    Long countProjectsByUserId(@Param("userId") Long userId);
 }

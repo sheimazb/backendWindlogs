@@ -34,4 +34,13 @@ public class StatsService {
     public Long countUserProjects(Long userId, String tenant) {
         return projectUserRepository.countProjectsByUserIdAndTenant(userId, tenant);
     }
+    
+    /**
+     * Count the number of projects a user is a member of across all tenants
+     * @param userId The ID of the user
+     * @return Number of projects the user is a member of
+     */
+    public Long countUserProjects(Long userId) {
+        return projectUserRepository.countProjectsByUserId(userId);
+    }
 }

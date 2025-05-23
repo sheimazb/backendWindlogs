@@ -18,6 +18,7 @@ import java.security.SecureRandom;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.HashMap;
+import java.util.Map;
 
 import com.windlogs.authentication.repository.UserRepository;
 import com.windlogs.authentication.security.JwtService;
@@ -304,5 +305,160 @@ public class AuthenticationController {
                 .role("SERVICE")
                 .tenant(tenant)
                 .build());
+    }
+
+    /**
+     * Retrieves role-specific statistics based on the authenticated user.
+     * Different roles see different statistics relevant to their responsibilities.
+     *
+     * @param authentication the current authenticated user
+     * @return a {@link ResponseEntity} containing role-specific statistics
+     */
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> getStats(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
+            return ResponseEntity.status(401).build();
+        }
+
+        User user = (User) authentication.getPrincipal();
+        Map<String, Object> stats = new HashMap<>();
+        String tenant = user.getTenant();
+
+        switch (user.getRole()) {
+            case PARTNER:
+                // Employee Statistics
+                List<User> employees = userRepository.findByTenantAndRoleIn(tenant, 
+                    List.of(Role.DEVELOPER, Role.TESTER, Role.MANAGER));
+                stats.put("totalEmployees", employees.size());
+                
+                // Employee Distribution by Role
+                Map<Role, Long> usersByRole = employees.stream()
+                    .collect(Collectors.groupingBy(User::getRole, Collectors.counting()));
+                stats.put("employeesByRole", usersByRole);
+                
+                // Active Employee Statistics
+                long tenantTotalUsers = employees.size();
+                long tenantActiveUsers = employees.stream()
+                    .filter(User::isEnabled)
+                    .count();
+                stats.put("totalEmployees", tenantTotalUsers);
+                stats.put("activeEmployees", tenantActiveUsers);
+                stats.put("employeeActivationRate", tenantTotalUsers > 0 ? 
+                    (double) tenantActiveUsers / tenantTotalUsers : 0);
+
+                // Team Composition Details
+                Map<String, Object> teamComposition = new HashMap<>();
+                teamComposition.put("developers", usersByRole.getOrDefault(Role.DEVELOPER, 0L));
+                teamComposition.put("testers", usersByRole.getOrDefault(Role.TESTER, 0L));
+                teamComposition.put("managers", usersByRole.getOrDefault(Role.MANAGER, 0L));
+                stats.put("teamComposition", teamComposition);
+
+                // Account Status Statistics
+                long lockedAccounts = employees.stream()
+                    .filter(User::isAccountLocked)
+                    .count();
+                stats.put("lockedAccounts", lockedAccounts);
+                stats.put("accountLockRate", tenantTotalUsers > 0 ? 
+                    (double) lockedAccounts / tenantTotalUsers : 0);
+
+                // Team Performance Indicators
+                Map<String, Object> teamPerformance = new HashMap<>();
+                teamPerformance.put("developerToTesterRatio", 
+                    usersByRole.getOrDefault(Role.TESTER, 0L) > 0 ?
+                    (double) usersByRole.getOrDefault(Role.DEVELOPER, 0L) / usersByRole.getOrDefault(Role.TESTER, 0L) : 0);
+                teamPerformance.put("managementRatio",
+                    tenantTotalUsers > 0 ?
+                    (double) usersByRole.getOrDefault(Role.MANAGER, 0L) / tenantTotalUsers : 0);
+                stats.put("teamPerformance", teamPerformance);
+
+                // Resource Utilization
+                Map<String, Object> resourceUtilization = new HashMap<>();
+                resourceUtilization.put("activeEmployeePercentage", 
+                    tenantTotalUsers > 0 ? (double) tenantActiveUsers / tenantTotalUsers * 100 : 0);
+                resourceUtilization.put("lockedAccountPercentage",
+                    tenantTotalUsers > 0 ? (double) lockedAccounts / tenantTotalUsers * 100 : 0);
+                stats.put("resourceUtilization", resourceUtilization);
+                break;
+
+            case MANAGER:
+                
+                List<User> teamMembers = userRepository.findByTenantAndRoleIn(tenant, 
+                    List.of(Role.DEVELOPER, Role.TESTER));
+                stats.put("totalTeamMembers", teamMembers.size());
+                
+              
+                Map<Role, Long> teamByRole = teamMembers.stream()
+                    .collect(Collectors.groupingBy(User::getRole, Collectors.counting()));
+                stats.put("teamByRole", teamByRole);
+                
+               
+                long activeTeamMembers = teamMembers.stream()
+                    .filter(User::isEnabled)
+                    .count();
+                stats.put("activeTeamMembers", activeTeamMembers);
+                stats.put("teamActivationRate", teamMembers.size() > 0 ? 
+                    (double) activeTeamMembers / teamMembers.size() : 0);
+                break;
+
+            case ADMIN:
+               
+                stats.put("totalUsers", userRepository.count());
+                stats.put("activatedUsers", userRepository.countByEnabledTrue());
+                stats.put("lockedAccounts", userRepository.countByAccountLockedTrue());
+                
+             
+                Map<Role, Long> allUsersByRole = userRepository.findAll().stream()
+                    .collect(Collectors.groupingBy(User::getRole, Collectors.counting()));
+                stats.put("usersByRole", allUsersByRole);
+                
+               
+                long tenantCount = userRepository.findAll().stream()
+                    .map(User::getTenant)
+                    .distinct()
+                    .count();
+                stats.put("numberOfTenants", tenantCount);
+                
+               
+                stats.put("totalPartners", userRepository.countAllPartners());
+                stats.put("activePartners", userRepository.countActivePartners());
+                stats.put("lockedPartners", userRepository.countLockedPartners());
+                break;
+
+            case DEVELOPER:
+            case TESTER:
+                
+                List<User> colleagues = userRepository.findByTenantAndRoleIn(tenant, 
+                    List.of(Role.DEVELOPER, Role.TESTER));
+                stats.put("teamSize", colleagues.size());
+                
+                
+                Map<Role, Long> colleaguesByRole = colleagues.stream()
+                    .collect(Collectors.groupingBy(User::getRole, Collectors.counting()));
+                stats.put("colleaguesByRole", colleaguesByRole);
+                
+                // Active colleagues statistics
+                long activeColleagues = colleagues.stream()
+                    .filter(User::isEnabled)
+                    .count();
+                stats.put("activeColleagues", activeColleagues);
+                stats.put("activeRate", colleagues.size() > 0 ? 
+                    (double) activeColleagues / colleagues.size() : 0);
+                
+                // Get manager information
+                List<User> managers = userRepository.findByTenantAndRoleIn(tenant, 
+                    List.of(Role.MANAGER));
+                stats.put("numberOfManagers", managers.size());
+                
+                // Team composition details
+                Map<String, Object> teamDetails = new HashMap<>();
+                teamDetails.put("developers", colleaguesByRole.getOrDefault(Role.DEVELOPER, 0L));
+                teamDetails.put("testers", colleaguesByRole.getOrDefault(Role.TESTER, 0L));
+                teamDetails.put("managers", managers.size());
+                stats.put("teamComposition", teamDetails);
+                
+                break;
+        }
+
+        return ResponseEntity.ok(stats);
     }
 }
