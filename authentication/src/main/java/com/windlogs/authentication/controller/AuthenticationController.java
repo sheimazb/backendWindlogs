@@ -39,14 +39,7 @@ public class AuthenticationController {
     private final UserRepository userRepository;
     private final JwtService jwtService;
 
-    /**
-     * Registers a new user based on the provided registration request.
-     *
-     * @param request the {@link RegistrationRequest} object containing user registration details (e.g., email, password)
-     * @return a {@link ResponseEntity} with a success message if registration is successful,
-     *         or an error message with an appropriate HTTP status code if it fails
-     * @throws ResponseStatusException if the registration fails due to invalid input or business logic errors
-     */
+   
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody @Valid RegistrationRequest request) {
         try {
@@ -63,12 +56,7 @@ public class AuthenticationController {
         }
     }
 
-    /**
-     * Authenticates a user and returns a JWT token upon successful login.
-     *
-     * @param request the {@link AuthenticationRequest} containing email and password
-     * @return a {@link ResponseEntity} containing an {@link AuthenticationResponse} with the JWT token and user details
-     */
+   
     @PostMapping("/authenticate")
     public ResponseEntity<AuthenticationResponse> authenticate(@RequestBody @Valid AuthenticationRequest request) {
         return ResponseEntity.ok(authenticationService.authenticate(request));
