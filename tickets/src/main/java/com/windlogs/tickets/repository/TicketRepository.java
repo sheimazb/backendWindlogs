@@ -43,6 +43,10 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     long countByTenantAndStatusAndUpdatedAtBetween(String tenant, Status status, LocalDateTime start, LocalDateTime end);
     long countByAssignedToUserIdAndTenantAndStatusAndUpdatedAtBetween(Long userId, String tenant, Status status, LocalDateTime start, LocalDateTime end);
 
+    // Count tickets by developer
+    Long countByAssignedToUserId(Long assignedToUserId);
+    Long countByAssignedToUserIdAndStatus(Long assignedToUserId, Status status);
+
     @Query("SELECT new map(" +
            "t.status as status, " +
            "COUNT(t) as count, " +

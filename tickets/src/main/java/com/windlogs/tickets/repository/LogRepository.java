@@ -63,7 +63,7 @@ public interface LogRepository extends JpaRepository<Log, Long> {
     long countProjectsByTenant(String tenant);
 
     @Query(value = "SELECT COUNT(DISTINCT l.project_id) FROM logs l " +
-           "WHERE l.tenant = ?1 AND l.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)", 
+           "WHERE l.tenant = ?1 AND l.created_at >= CURRENT_DATE - INTERVAL '7 days'", 
            nativeQuery = true)
     long countActiveProjectsByTenant(String tenant);
 
@@ -119,4 +119,15 @@ public interface LogRepository extends JpaRepository<Log, Long> {
            "WHERE l.created_by_user_id = ?1 AND l.tenant = ?2 AND l.type = 'ERROR'",
            nativeQuery = true)
     long countErrorsFoundByTester(Long userId, String tenant);
+
+    @Query("SELECT COUNT(l) FROM Log l WHERE l.projectId = :projectId AND l.severity = 'HIGH'")
+    long countCriticalErrorsByProject(@Param("projectId") Long projectId);
+
+    @Query("SELECT new map(" +
+           "l.type as type, " +
+           "COUNT(l) as count) " +
+           "FROM Log l " +
+           "WHERE l.projectId = :projectId " +
+           "GROUP BY l.type")
+    List<Map<String, Object>> getErrorTypeDistributionByProject(@Param("projectId") Long projectId);
 }
