@@ -272,7 +272,7 @@ public class ProjectController {
             Project existingProject = projectService.getProjectById(id)
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.NOT_FOUND,
-                            "Project not found with id: " + id
+                            "Project not found to update with id: " + id
                     ));
 
             if (!existingProject.getTenant().equals(user.getTenant())) {
@@ -317,7 +317,7 @@ public class ProjectController {
         Project project = projectService.getProjectById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Project not found with id: " + id
+                        "Project not found to delete with id: " + id
                 ));
 
         if (!project.getTenant().equals(user.getTenant())) {
@@ -374,7 +374,7 @@ public class ProjectController {
             Project project = projectService.getProjectById(projectId)
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.NOT_FOUND,
-                            "Project not found with id: " + projectId
+                            "Project not found to add user to project with id: " + projectId
                     ));
             logger.info("Project found - Name: {}, Tenant: {}, Creator: {}",
                     project.getName(), project.getTenant(), project.getCreator().getEmail());
@@ -460,7 +460,7 @@ public class ProjectController {
         Project project = projectService.getProjectById(projectId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Project not found with id: " + projectId
+                        "Project not found to remove user from project with id: " + projectId
                 ));
 
         if (!project.getTenant().equals(authenticatedUser.getTenant())) {
@@ -489,7 +489,7 @@ public class ProjectController {
         Project project = projectService.getProjectById(projectId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Project not found with id: " + projectId
+                        "Project not found to get users with id: " + projectId
                 ));
 
         if (!project.getTenant().equals(authenticatedUser.getTenant())) {
