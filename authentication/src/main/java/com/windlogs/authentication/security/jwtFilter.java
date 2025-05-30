@@ -28,7 +28,7 @@ public class jwtFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
-    private static final Logger logger = LoggerFactory.getLogger(jwtFilter.class);
+    private static final Logger jwtFilterLogger = LoggerFactory.getLogger(jwtFilter.class);
 
     // List of paths that don't require authentication
     private static final List<String> PUBLIC_PATHS = Arrays.asList(
@@ -58,18 +58,18 @@ public class jwtFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         try {
             String path = request.getServletPath();
-            logger.debug("Processing request for path: {}", path);
+            jwtFilterLogger.debug("Processing request for path: {}", path);
 
             // Skip authentication for public paths
             if (isPublicPath(path)) {
-                logger.debug("Skipping authentication for public path: {}", path);
+                jwtFilterLogger.debug("Skipping authentication for public path: {}", path);
                 filterChain.doFilter(request, response);
                 return;
             }
 
             final String authHeader = request.getHeader(AUTHORIZATION);
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                logger.warn("No valid authorization header found for protected path: {}", path);
+                jwtFilterLogger.warn("No valid authorization header found for protected path: {}", path);
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -81,7 +81,7 @@ public class jwtFilter extends OncePerRequestFilter {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
-                    logger.debug("JWT token is valid for user: {}", userEmail);
+                    jwtFilterLogger.debug("JWT token is valid for user: {}", userEmail);
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,
@@ -95,7 +95,7 @@ public class jwtFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
 
         } catch (Exception e) {
-            logger.error("Error in JWT filter: {}", e.getMessage(), e);
+            jwtFilterLogger.error("Error in JWT filter: {}", e.getMessage(), e);
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
     }
