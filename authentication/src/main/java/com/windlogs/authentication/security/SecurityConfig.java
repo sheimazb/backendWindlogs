@@ -25,7 +25,8 @@ public class SecurityConfig {
     private final jwtFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
     private final LogoutHandler logoutHandler;
-    
+    private String StaffCreate = "CREATE_STAFF";
+    private String ProjectCreate = "CREATE_PROJECT";
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -47,13 +48,13 @@ public class SecurityConfig {
                                 "/api/v1/auth/stats",
                                 "/ws/**"
                         ).permitAll()
-                        .requestMatchers("/api/v1/employees/create-staff").hasAuthority("CREATE_STAFF")
+                        .requestMatchers("/api/v1/employees/create-staff").hasAuthority(StaffCreate)
                         .requestMatchers("/api/v1/employees/my-staff",
                                 "/api/v1/employees/{id}"
                         ).hasAuthority("VIEW_STAFF")
-                        .requestMatchers("/api/v1/projects/create").hasAuthority("CREATE_PROJECT")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/projects/{projectId}/users/{userId}").hasAnyAuthority("CREATE_PROJECT", "CREATE_STAFF")
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/projects/{projectId}/users/{userId}").hasAnyAuthority("CREATE_PROJECT", "CREATE_STAFF")
+                        .requestMatchers("/api/v1/projects/create").hasAuthority(ProjectCreate)
+                        .requestMatchers(HttpMethod.POST, "/api/v1/projects/{projectId}/users/{userId}").hasAnyAuthority(ProjectCreate, StaffCreate)
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/projects/{projectId}/users/{userId}").hasAnyAuthority(ProjectCreate, StaffCreate)
                         .requestMatchers("/api/v1/projects/{id}/**").authenticated()
                         .requestMatchers("/api/v1/projects/search").authenticated()
                         .requestMatchers("/api/v1/projects/user/{userId}").authenticated()
