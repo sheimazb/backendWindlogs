@@ -19,6 +19,8 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
+    private String utf8 = "UTF-8";
+
     @Value("${spring.mail.username}")
     private String fromEmail;
 
@@ -35,7 +37,7 @@ public class EmailService {
             logger.info("Preparing to send email to: {}", to);
 
             MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, utf8);
 
             helper.setTo(to);
             helper.setSubject(subject);
@@ -48,7 +50,7 @@ public class EmailService {
                     token
             );
 
-            logger.debug("Email HTML content: {}", htmlContent);
+            logger.debug("Email HTML content : {}", htmlContent);
             helper.setText(htmlContent, true);
 
             mailSender.send(mimeMessage);
@@ -69,7 +71,7 @@ public class EmailService {
             logger.info("Preparing to send employee credentials email to: {}", to);
 
             MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, utf8);
 
             helper.setTo(to);
             helper.setSubject(subject);
@@ -85,7 +87,7 @@ public class EmailService {
                 );
             }
 
-            logger.debug("Email HTML content: {}", htmlContent);
+            logger.debug("Email HTML content for employee credentials: {}", htmlContent);
             helper.setText(htmlContent, true);
 
             mailSender.send(mimeMessage);
@@ -105,7 +107,7 @@ public class EmailService {
             logger.info("Preparing to send partner profile status to: {}", to);
 
             MimeMessage mimeMessage = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, utf8);
 
             helper.setTo(to);
             helper.setSubject(subject);
@@ -135,7 +137,7 @@ public class EmailService {
                 htmlContent = htmlContent.replace("${" + entry.getKey() + "}", entry.getValue());
             }
 
-            logger.debug("Email HTML content: {}", htmlContent);
+            logger.debug("Email HTML content for partner profile status: {}", htmlContent);
             helper.setText(htmlContent, true);
 
             mailSender.send(mimeMessage);
