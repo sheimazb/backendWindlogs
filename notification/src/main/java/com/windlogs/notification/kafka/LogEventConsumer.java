@@ -128,14 +128,11 @@ public class LogEventConsumer {
             
             log.info("Creating comment notification for recipient: {}", recipientEmail);
             
-            // Use logId as ticketId - logId is extracted from container_id in TicketsLogEvent.toLogEvent()
-            Long ticketId = logEvent.logId();
-            
             Notification notification = Notification.builder()
                     .subject(subject.length() > 200 ? subject.substring(0, 200) : subject)
                     .message(message.length() > 200 ? message.substring(0, 200) : message)
                     .sourceType("COMMENT")
-                    .sourceId(ticketId) // Use ticket ID instead of comment ID
+                    .sourceId(logEvent.sourceId())
                     .tenant(logEvent.tenant())
                     .recipientEmail(recipientEmail)
                     .senderEmail(logEvent.senderEmail())
@@ -146,8 +143,8 @@ public class LogEventConsumer {
             
             // Save the notification
             notificationService.createNotification(notification);
-            log.info("Comment notification created for ticket ID: {}, tenant: {}, recipient: {}", 
-                    ticketId, logEvent.tenant(), recipientEmail);
+            log.info("Comment notification created for comment ID: {}, tenant: {}, recipient: {}", 
+                    logEvent.sourceId(), logEvent.tenant(), recipientEmail);
         } catch (Exception e) {
             log.error("Error creating comment notification: {}", e.getMessage(), e);
         }
@@ -166,14 +163,11 @@ public class LogEventConsumer {
             
             log.info("Creating solution notification for recipient: {}", recipientEmail);
             
-            // Use logId as ticketId - logId is extracted from container_id in TicketsLogEvent.toLogEvent()
-            Long ticketId = logEvent.logId();
-            
             Notification notification = Notification.builder()
                     .subject(subject.length() > 200 ? subject.substring(0, 200) : subject)
                     .message(message.length() > 200 ? message.substring(0, 200) : message)
                     .sourceType("SOLUTION")
-                    .sourceId(ticketId) // Use ticket ID instead of solution ID
+                    .sourceId(logEvent.sourceId())
                     .tenant(logEvent.tenant())
                     .recipientEmail(recipientEmail)
                     .senderEmail(logEvent.senderEmail())
@@ -184,8 +178,8 @@ public class LogEventConsumer {
             
             // Save the notification
             notificationService.createNotification(notification);
-            log.info("Solution notification created for ticket ID: {}, tenant: {}, recipient: {}", 
-                    ticketId, logEvent.tenant(), recipientEmail);
+            log.info("Solution notification created for solution ID: {}, tenant: {}, recipient: {}", 
+                    logEvent.sourceId(), logEvent.tenant(), recipientEmail);
         } catch (Exception e) {
             log.error("Error creating solution notification: {}", e.getMessage(), e);
         }

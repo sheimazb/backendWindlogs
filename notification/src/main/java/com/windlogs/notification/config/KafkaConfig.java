@@ -45,9 +45,17 @@ public class KafkaConfig {
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class.getName());
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
         props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, TicketsLogEvent.class.getName());
+        
+        // Add type mappings for the LogEvent class
+        props.put(JsonDeserializer.TYPE_MAPPINGS, 
+                "com.windlogs.tickets.kafka.LogEvent:com.windlogs.notification.kafka.TicketsLogEvent");
+        
+        // Enable type info headers
+        props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, true);
         
         return new DefaultKafkaConsumerFactory<>(props);
     }
@@ -104,7 +112,14 @@ public class KafkaConfig {
         ConcurrentKafkaListenerContainerFactory<String, TicketsLogEvent> factory = 
             new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(logEventConsumerFactory());
-        factory.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(1000L, 2L)));
+        factory.setCommonErrorHandler(defaultErrorHandler());
+        
+        factory.setRecordInterceptor((record, consumer) -> {
+            logger.debug("Received log record: topic={}, partition={}, offset={}, key={}, value={}", 
+                    record.topic(), record.partition(), record.offset(), record.key(), record.value());
+            return record;
+        });
+        
         return factory;
     }
 
