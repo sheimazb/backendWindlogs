@@ -30,6 +30,7 @@ public class ProjectRequestDTO {
     private String technologies; // Can be string directly from frontend
     private List<String> technologiesArray; // Or can be array that will be joined
     private String repositoryLink;
+    private String githubBranch;
     private String primaryTag;
     private Float progressPercentage;
     

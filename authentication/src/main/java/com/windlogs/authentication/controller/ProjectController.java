@@ -20,6 +20,7 @@ import com.windlogs.authentication.entity.User;
 import com.windlogs.authentication.entity.Role;
 import com.windlogs.authentication.service.ProjectService;
 import com.windlogs.authentication.dto.ProjectRequestDTO;
+import com.windlogs.authentication.service.GitHubService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -30,6 +31,7 @@ public class ProjectController {
     private static final Logger logger = LoggerFactory.getLogger(ProjectController.class);
     private final ProjectService projectService;
     private final ProjectRepository projectRepository;
+    private final GitHubService gitHubService;
 
     @GetMapping("/check-primary-tag")
     public ResponseEntity<Boolean> checkPrimaryTag(@RequestParam String tag) {
@@ -566,5 +568,111 @@ public class ProjectController {
                 .filter(p -> p.getProjectType() == projectType)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(filteredProjects);
+    }
+
+    /**
+     * Fetch file contents from the linked GitHub repository for a project.
+     */
+    @GetMapping("/{projectId}/github/file")
+    public ResponseEntity<String> fetchGitHubFile(
+            @PathVariable Long projectId,
+            @RequestParam String path) {
+        Project project = projectService.getProjectById(projectId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+        String repoUrl = project.getRepositoryLink();
+        String branch = project.getGithubBranch();
+        if (repoUrl == null || !repoUrl.contains("github.com/")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project is not linked to a GitHub repository");
+        }
+        // Extract owner and repo from URL
+        String[] parts = repoUrl.split("github.com/");
+        String[] repoParts = parts[1].replace(".git", "").split("/");
+        String owner = repoParts[0];
+        String repo = repoParts[1];
+        String fileContent = gitHubService.fetchFileContent(owner, repo, path, branch);
+        return ResponseEntity.ok(fileContent);
+    }
+
+    /**
+     * Fetch branches from the linked GitHub repository for a project.
+     */
+    @GetMapping("/{projectId}/github/branches")
+    public ResponseEntity<String> fetchGitHubBranches(@PathVariable Long projectId) {
+        Project project = projectService.getProjectById(projectId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+        String repoUrl = project.getRepositoryLink();
+        if (repoUrl == null || !repoUrl.contains("github.com/")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project is not linked to a GitHub repository");
+        }
+        String[] parts = repoUrl.split("github.com/");
+        String[] repoParts = parts[1].replace(".git", "").split("/");
+        String owner = repoParts[0];
+        String repo = repoParts[1];
+        String branches = gitHubService.fetchBranches(owner, repo);
+        return ResponseEntity.ok(branches);
+    }
+
+    /**
+     * Fetch commits from the linked GitHub repository for a project.
+     */
+    @GetMapping("/{projectId}/github/commits")
+    public ResponseEntity<String> fetchGitHubCommits(@PathVariable Long projectId) {
+        Project project = projectService.getProjectById(projectId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+        String repoUrl = project.getRepositoryLink();
+        String branch = project.getGithubBranch();
+        if (repoUrl == null || !repoUrl.contains("github.com/")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project is not linked to a GitHub repository");
+        }
+        String[] parts = repoUrl.split("github.com/");
+        String[] repoParts = parts[1].replace(".git", "").split("/");
+        String owner = repoParts[0];
+        String repo = repoParts[1];
+        String commits = gitHubService.fetchCommits(owner, repo, branch);
+        return ResponseEntity.ok(commits);
+    }
+
+    /**
+     * List files and folders in the linked GitHub repository for a project.
+     */
+    @GetMapping("/{projectId}/github/list")
+    public ResponseEntity<String> listGitHubFilesAndFolders(
+            @PathVariable Long projectId,
+            @RequestParam(required = false) String path) {
+        Project project = projectService.getProjectById(projectId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+        String repoUrl = project.getRepositoryLink();
+        String branch = project.getGithubBranch();
+        if (repoUrl == null || !repoUrl.contains("github.com/")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project is not linked to a GitHub repository");
+        }
+        String[] parts = repoUrl.split("github.com/");
+        String[] repoParts = parts[1].replace(".git", "").split("/");
+        String owner = repoParts[0];
+        String repo = repoParts[1];
+        String result = gitHubService.listFilesAndFolders(owner, repo, path, branch);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Get the repository tree structure (non-recursive, GitHub style) for a project.
+     */
+    @GetMapping("/{projectId}/github/tree")
+    public ResponseEntity<String> getGitHubRepositoryTree(
+            @PathVariable Long projectId,
+            @RequestParam(required = false) String path) {
+        Project project = projectService.getProjectById(projectId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+        String repoUrl = project.getRepositoryLink();
+        String branch = project.getGithubBranch();
+        if (repoUrl == null || !repoUrl.contains("github.com/")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project is not linked to a GitHub repository");
+        }
+        String[] parts = repoUrl.split("github.com/");
+        String[] repoParts = parts[1].replace(".git", "").split("/");
+        String owner = repoParts[0];
+        String repo = repoParts[1];
+        String result = gitHubService.getRepositoryTree(owner, repo, branch, path);
+        return ResponseEntity.ok(result);
     }
 }

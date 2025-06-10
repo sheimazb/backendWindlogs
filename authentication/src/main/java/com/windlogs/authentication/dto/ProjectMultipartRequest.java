@@ -20,6 +20,7 @@ public class ProjectMultipartRequest {
     private String description;
     private String technologies;
     private String repositoryLink;
+    private String githubBranch;
     private String primaryTag;
     private String tenant;
     private MultipartFile logo;

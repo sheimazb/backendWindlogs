@@ -18,6 +18,7 @@ public class ProjectCreationRequest {
     private String description;
     private String technologies;
     private String repositoryLink;
+    private String githubBranch;
     private String tags;
     private String tag;
     private String documentationLink;

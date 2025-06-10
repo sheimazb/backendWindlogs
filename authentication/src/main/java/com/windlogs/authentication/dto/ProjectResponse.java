@@ -18,6 +18,7 @@ public class ProjectResponse {
     private String description;
     private String technologies;
     private String repositoryLink;
+    private String githubBranch;
     private int progressPercentage;
     private LocalDateTime deadlineAlert;
     private int membersCount;

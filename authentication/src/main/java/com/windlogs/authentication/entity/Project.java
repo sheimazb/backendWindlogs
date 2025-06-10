@@ -40,6 +40,7 @@ public class Project implements Serializable {
     private String technologies;
     
     private String repositoryLink;
+    private String githubBranch;
     private String primaryTag;
     private float progressPercentage;
     private LocalDate deadlineDate;
