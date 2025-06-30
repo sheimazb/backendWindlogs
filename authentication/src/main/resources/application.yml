@@ -13,3 +13,5 @@ springdoc:
   default-produces-media-type: application/json
 server:
   port: 8088
+github:
+  token: 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

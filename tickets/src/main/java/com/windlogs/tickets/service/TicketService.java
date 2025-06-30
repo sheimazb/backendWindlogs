@@ -165,7 +165,10 @@ public class TicketService {
                 // From RESOLVED, can only move to MERGED_TO_TEST
                 return newStatus == Status.MERGED_TO_TEST;
             case MERGED_TO_TEST:
-                // From MERGED_TO_TEST, can only move to DONE
+                // From MERGED_TO_TEST, can only move to VERIFIED
+                return newStatus == Status.VERIFIED;
+            case VERIFIED:
+                // From VERIFIED, can only move to DONE
                 return newStatus == Status.DONE;
             case DONE:
                 // Cannot change status once it's DONE

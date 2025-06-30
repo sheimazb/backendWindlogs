@@ -9,9 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import com.windlogs.tickets.service.ExceptionAnalyzerService;
 import com.windlogs.tickets.service.ExceptionAnalyzerService.LogRecommendationResponse;
 
-/**
- * Contrôleur pour le service de recommandation de solutions basées sur les logs d'erreur
- */
+
 @RestController
 @RequestMapping("/api/v1/solutions")
 @RequiredArgsConstructor

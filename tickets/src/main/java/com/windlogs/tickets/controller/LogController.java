@@ -99,12 +99,7 @@ public class LogController {
         return ResponseEntity.ok(convertToDTO(log));
     }
 
-    /**
-     * Get a log by Tenant
-     * @param logTenant The log Tenant
-     * @param authorizationHeader The authorization header
-     * @return The log if found
-     */
+   
     @GetMapping("/logs-by-tenant/{logTenant}")
     public ResponseEntity<List<LogDTO>> getLogByTenant(
             @PathVariable String logTenant,

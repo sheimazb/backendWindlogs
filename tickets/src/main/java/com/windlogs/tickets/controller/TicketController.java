@@ -116,13 +116,13 @@ public class TicketController {
                 String allowedStatuses;
                 switch (roleName) {
                     case "MANAGER":
-                        allowedStatuses = "TO_DO, MERGED_TO_TEST";
+                        allowedStatuses = "TO_DO, MERGED_TO_TEST, DONE";
                         break;
                     case "DEVELOPER":
                         allowedStatuses = "IN_PROGRESS, RESOLVED";
                         break;
                     case "TESTER":
-                        allowedStatuses = "DONE";
+                        allowedStatuses = "VERIFIED";
                         break;
                     default:
                         allowedStatuses = "none";
@@ -174,16 +174,17 @@ public class TicketController {
 
         switch (userRole.toUpperCase()) {
             case "MANAGER":
-                // Managers can assign tickets and move from RESOLVED to MERGED_TO_TEST
+                // Managers can assign tickets, move from RESOLVED to MERGED_TO_TEST, and from VERIFIED to DONE
                 return newStatus == Status.TO_DO || 
-                       newStatus == Status.MERGED_TO_TEST;
+                       newStatus == Status.MERGED_TO_TEST ||
+                       newStatus == Status.DONE;
             case "DEVELOPER":
                 // Developers can change to IN_PROGRESS and RESOLVED
                 return newStatus == Status.IN_PROGRESS || 
                        newStatus == Status.RESOLVED;
             case "TESTER":
-                // Testers can mark as DONE after testing
-                return newStatus == Status.DONE;
+                // Testers can change from MERGED_TO_TEST to VERIFIED
+                return newStatus == Status.VERIFIED;
             default:
                 return false;
         }

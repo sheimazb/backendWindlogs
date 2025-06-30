@@ -675,4 +675,76 @@ public class ProjectController {
         String result = gitHubService.getRepositoryTree(owner, repo, branch, path);
         return ResponseEntity.ok(result);
     }
+
+    /**
+     * Get repository information for a project's linked GitHub repository.
+     */
+    @GetMapping("/{projectId}/github/info")
+    public ResponseEntity<String> getGitHubRepositoryInfo(@PathVariable Long projectId) {
+        Project project = projectService.getProjectById(projectId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+
+        String repoUrl = project.getRepositoryLink();
+        if (repoUrl == null || !repoUrl.contains("github.com/")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project is not linked to a GitHub repository");
+        }
+
+        String[] parts = repoUrl.split("github.com/");
+        String[] repoParts = parts[1].replace(".git", "").split("/");
+        String owner = repoParts[0];
+        String repo = repoParts[1];
+
+        String repositoryInfo = gitHubService.getRepositoryInfo(owner, repo);
+        return ResponseEntity.ok(repositoryInfo);
+    }
+
+    /**
+     * Get GitHub API rate limit status.
+     */
+    @GetMapping("/github/rate-limit")
+    public ResponseEntity<String> getGitHubRateLimit() {
+        String rateLimitStatus = gitHubService.getRateLimitStatus();
+        return ResponseEntity.ok(rateLimitStatus);
+    }
+
+    /**
+     * Enhanced tree endpoint with better error handling and response structure.
+     */
+    @GetMapping("/{projectId}/github/tree-enhanced")
+    public ResponseEntity<String> getEnhancedGitHubTree(
+            @PathVariable Long projectId,
+            @RequestParam(required = false, defaultValue = "") String path) {
+
+        try {
+            Project project = projectService.getProjectById(projectId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+
+            String repoUrl = project.getRepositoryLink();
+            String branch = project.getGithubBranch();
+
+            if (repoUrl == null || !repoUrl.contains("github.com/")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Project is not linked to a GitHub repository");
+            }
+
+            String[] parts = repoUrl.split("github.com/");
+            String[] repoParts = parts[1].replace(".git", "").split("/");
+            String owner = repoParts[0];
+            String repo = repoParts[1];
+
+            logger.info("Fetching enhanced GitHub tree for {}/{} at path '{}' on branch '{}'",
+                    owner, repo, path, branch);
+
+            String result = gitHubService.getRepositoryTree(owner, repo, branch, path);
+            return ResponseEntity.ok(result);
+
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            logger.error("Failed to fetch enhanced GitHub tree for project {}: {}", projectId, e.getMessage(), e);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to fetch repository tree: " + e.getMessage()
+            );
+        }
+    }
 }

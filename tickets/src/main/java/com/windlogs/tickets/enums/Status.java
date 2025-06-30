@@ -6,5 +6,6 @@ public enum Status {
     IN_PROGRESS,
     RESOLVED,
     MERGED_TO_TEST,
+    VERIFIED,
     DONE
 }
